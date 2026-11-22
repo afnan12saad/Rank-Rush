@@ -780,6 +780,16 @@ export async function listEventArchives(): Promise<EventArchive[]> {
   }));
 }
 
+// Permanently delete ONE archived event (its saved standings only). The server
+// re-checks admin role and the exact event name, and deletes a single row.
+export async function deleteEventArchive(id: string, eventName: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_event_archive', {
+    p_id: id,
+    p_event_name: eventName,
+  });
+  if (error) throw new Error(error.message);
+}
+
 // Archive current standings, then reset for a new event: one atomic RPC.
 // The server closes submissions first and refuses if the rating count moved,
 // so an archive can never silently miss late scores.
