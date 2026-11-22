@@ -434,6 +434,23 @@ export const INITIAL_15_TEAMS: Array<{
 export const MAX_ADMIN_USERS = 5;
 export const ADMIN_SLOT_IDS = ['s1', 's2', 's3', 's4', 's5'] as const;
 
+
+export type AdminRequestViewState = 'pending' | 'rejected' | 'none';
+
+/**
+ * Maps the latest admin_requests row for a signed-in non-admin to what the
+ * sign-in UI should show. 'approved' rows are 'none' because the admins table
+ * (checked separately) is the source of truth for actual access.
+ */
+export function resolveAdminRequestView(
+  latest: { status: string } | null | undefined,
+): AdminRequestViewState {
+  if (!latest) return 'none';
+  if (latest.status === 'pending') return 'pending';
+  if (latest.status === 'rejected') return 'rejected';
+  return 'none';
+}
+
 export function generateVerificationCode(): string {
   // 6-digit random verification code
   return String(Math.floor(100000 + Math.random() * 900000));
