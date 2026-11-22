@@ -109,8 +109,8 @@ export function SiteHeader() {
               to="/"
               className="inline-flex items-center gap-2.5 min-h-[44px] text-white font-display font-bold text-lg tracking-tight whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded-md"
             >
+              <BrandMark className="h-7 w-auto" />
               <span>RANK RUSH</span>
-              <BrandMark className="w-7 h-7" />
             </Link>
           </div>
         </div>
