@@ -442,4 +442,4 @@ export function AdminTeamsPanel({
       />
     </div>
   );
-                      }
+}
