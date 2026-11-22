@@ -188,23 +188,6 @@ export function ProjectorPage() {
         {/* Leaderboard Area */}
         {showAdminOnlyPreview ? (
           <section className="space-y-6 animate-reveal">
-            <div className="max-w-4xl mx-auto p-5 rounded-xl bg-[#0D1E33] border border-[#F5B942]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-[#142D4C] text-[#F5B942] flex items-center justify-center shrink-0">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-display font-bold text-white">
-                    Live Leaderboard (Admin Only)
-                  </h2>
-                  <p className="text-sm text-slate-300">
-                    Visible only while signed in as an admin. Judges and other
-                    users cannot open it. Show this screen on the event display.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {adminLiveEntries.length > 0 ? (
               <PodiumShowcase
                 entries={adminLiveEntries}
