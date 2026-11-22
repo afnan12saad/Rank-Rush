@@ -27,8 +27,6 @@ import {
   subscribeAllAdmins,
   subscribeAllEvaluations,
   subscribeAllJudges,
-  getAdminSlotUsage,
-  type AdminSlotUsage,
 } from '../services/arenaService';
 import type {
   AdminUser,
@@ -39,7 +37,6 @@ import type {
 import {
   calculateDashboardMetrics,
   calculateLeaderboard,
-  MAX_ADMIN_USERS,
 } from '../utils/scoring';
 
 export function AdminDashboardPage() {
@@ -68,15 +65,6 @@ export function AdminDashboardPage() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [toast, setToast] = useState('');
   const zeroInitAttempted = useRef(false);
-  const [slotUsage, setSlotUsage] = useState<AdminSlotUsage | null>(null);
-  useEffect(() => {
-    if (!isAdmin) return;
-    void getAdminSlotUsage().then(setSlotUsage).catch(() => setSlotUsage(null));
-  }, [isAdmin, admins.length]);
-  const adminLimitReached =
-    admins.length >= MAX_ADMIN_USERS ||
-    (slotUsage !== null && (!slotUsage.reconciled || slotUsage.free.length === 0));
-
   const pendingRequests = useMemo(
     () => adminRequests.filter((r) => r.status === 'pending'),
     [adminRequests],
@@ -216,11 +204,6 @@ export function AdminDashboardPage() {
               confirmed outside the app (in person, or a message you trust); the name and
               email below are whatever the requester typed.
             </p>
-            {adminLimitReached && (
-              <p className="text-xs text-amber-200">
-                {admins.length} of {MAX_ADMIN_USERS} admin accounts. Adding another admin is not possible right now. Remove an admin, or see Event Settings for details.
-              </p>
-            )}
             <div className="divide-y divide-amber-900/40 space-y-2">
               {pendingRequests.map((req) => (
                 <div
@@ -243,14 +226,9 @@ export function AdminDashboardPage() {
                           await approveRequest(req);
                           showToast(`Approved ${req.name} as Administrator.`);
                         } catch (err) {
-                          showToast(
-                            err instanceof Error && /admin limit|maximum of/i.test(err.message)
-                              ? err.message
-                              : 'Unable to approve admin request.',
-                          );
+                          showToast('Unable to approve admin request.');
                         }
                       }}
-                      disabled={adminLimitReached}
                       className="min-h-[44px] px-4 py-2 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -536,4 +514,4 @@ export function AdminDashboardPage() {
       <SiteFooter />
     </div>
   );
-            }
+}
