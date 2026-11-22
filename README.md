@@ -1,5 +1,7 @@
 # Rank Rush
 
+Live site: https://rank-rush.pages.dev
+
 Smart project evaluation and live judging platform: judges score teams on five
 criteria (0-5 each, total /25), a live admin-only projector shows the animated
 leaderboard, and the audience sees aggregate standings only after an admin
