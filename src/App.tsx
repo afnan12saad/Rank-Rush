@@ -6,6 +6,7 @@ import { JudgeLoginPage } from './pages/JudgeLoginPage';
 import { JudgeDashboardPage } from './pages/JudgeDashboardPage';
 import { JudgeEvaluatePage } from './pages/JudgeEvaluatePage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { ProjectorPage } from './pages/ProjectorPage';
 import { FinalResultsPage } from './pages/FinalResultsPage';
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/judge/dashboard" element={<JudgeDashboardPage />} />
             <Route path="/judge/evaluate/:teamId" element={<JudgeEvaluatePage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route path="/admin/reset-password" element={<ResetPasswordPage />} />
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/projector" element={<ProjectorPage />} />
             <Route path="/results" element={<FinalResultsPage />} />
