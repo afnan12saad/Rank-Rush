@@ -496,6 +496,21 @@ export function validateAdminRegistrationInput(params: {
   return null;
 }
 
+export function validatePasswordChange(params: {
+  password: string;
+  confirmPassword: string;
+}): string | null {
+  if (params.password.length < 8) {
+    return 'Password must be at least 8 characters long.';
+  }
+
+  if (params.password !== params.confirmPassword) {
+    return 'New Password and Confirm Password do not match.';
+  }
+
+  return null;
+}
+
 export const MIN_TIMER_SECONDS = 10;
 export const MAX_TIMER_SECONDS = 7200;
 
