@@ -1,6 +1,6 @@
 # Rank Rush
 
-Live site: https://rank-rush.pages.dev
+Live site : https://rank-rush.pages.dev
 
 Smart project evaluation and live judging platform: judges score teams on five
 criteria (0-5 each, total /25), a live admin-only projector shows the animated
@@ -22,6 +22,7 @@ publishes them.
 npm install
 npm run dev
 ```
+
 
 Node 20+ recommended. `npm run lint` typechecks, `npm run build` builds for
 production, and `npx tsx --test src/utils/scoring.test.ts` runs the unit tests.
