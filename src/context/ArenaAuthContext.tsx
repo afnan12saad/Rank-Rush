@@ -24,6 +24,7 @@ import {
   getFirstAdminInfo,
   registerJudgeByNameEmail,
   rejectAdminJoinRequest,
+  resubmitAdminJoinRequest,
   subscribeAdminQuota,
   subscribeAdminRequests,
   subscribeEventSettings,
@@ -34,6 +35,7 @@ import {
 import {
   MAX_ADMIN_USERS,
   validateAdminRegistrationInput,
+  resolveAdminRequestView,
   validateJudgeNameAndEmail,
 } from '../utils/scoring';
 
@@ -95,6 +97,7 @@ interface ArenaAuthContextValue {
   adminQuota: AdminQuota;
   firstAdminInfo: { email: string; uid: string; name: string } | null;
   pendingAdminRequest: AdminRequest | null;
+  rejectedAdminRequest: AdminRequest | null;
   adminRequests: AdminRequest[];
   judgeSession: JudgeSession | null;
   judgeProfile: Judge | null;
@@ -113,6 +116,7 @@ interface ArenaAuthContextValue {
   refreshAdminVerification: () => Promise<boolean>;
   sendAdminPasswordReset: (email: string) => Promise<void>;
   requestAdminJoin: (name: string) => Promise<AdminRequest>;
+  resubmitAdminRequest: () => Promise<void>;
   approveRequest: (request: AdminRequest) => Promise<void>;
   rejectRequest: (requestUid: string) => Promise<void>;
   signInJudgeByNameAndEmail: (name: string, email: string) => Promise<Judge>;
@@ -138,6 +142,8 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
   } | null>(null);
   const [pendingAdminRequest, setPendingAdminRequest] =
     useState<AdminRequest | null>(null);
+  const [rejectedAdminRequest, setRejectedAdminRequest] =
+    useState<AdminRequest | null>(null);
   const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([]);
   const [judgeSession, setJudgeSession] = useState<JudgeSession | null>(null);
   const [judgeProfile, setJudgeProfile] = useState<Judge | null>(null);
@@ -152,6 +158,7 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
       setIsAdmin(false);
       setIsFirstAdmin(false);
       setPendingAdminRequest(null);
+      setRejectedAdminRequest(null);
       setJudgeSession(null);
       setJudgeProfile(null);
       setAuthReady(true);
@@ -184,32 +191,44 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
           .order('requested_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (req) {
-          setPendingAdminRequest(
-            req.status === 'pending'
-              ? ({
-                  ...req,
-                  verificationCode: req.verification_code,
-                  requestedAt: req.requested_at,
-                } as unknown as AdminRequest)
-              : null,
-          );
+        const view = resolveAdminRequestView(req);
+        if (view === 'pending') {
+          setPendingAdminRequest({
+            ...req,
+            verificationCode: req.verification_code,
+            requestedAt: req.requested_at,
+          } as unknown as AdminRequest);
+          setRejectedAdminRequest(null);
+        } else if (view === 'rejected') {
+          setPendingAdminRequest(null);
+          setRejectedAdminRequest({
+            ...req,
+            verificationCode: req.verification_code,
+            requestedAt: req.requested_at,
+          } as unknown as AdminRequest);
         } else {
           setPendingAdminRequest(null);
-          const created = await createAdminJoinRequest({
-            uid: su.id,
-            email: su.email,
-            name:
-              (su.user_metadata?.full_name as string | undefined) ??
-              su.email.split('@')[0],
-          });
-          if (created) setPendingAdminRequest(created);
+          setRejectedAdminRequest(null);
+          if (!req) {
+            // No request row yet: create one (idempotent) so an existing
+            // admin can approve them.
+            const created = await createAdminJoinRequest({
+              uid: su.id,
+              email: su.email,
+              name:
+                (su.user_metadata?.full_name as string | undefined) ??
+                su.email.split('@')[0],
+            });
+            if (created) setPendingAdminRequest(created);
+          }
         }
       } catch {
         setPendingAdminRequest(null);
+        setRejectedAdminRequest(null);
       }
     } else {
       setPendingAdminRequest(null);
+      setRejectedAdminRequest(null);
     }
 
     // Judge profile is the judges row owned by this auth user (anonymous or not).
@@ -420,6 +439,15 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const resubmitAdminRequest = useCallback(async () => {
+    if (!user) {
+      throw new Error('Sign in with email and password first.');
+    }
+    await resubmitAdminJoinRequest();
+    const { data } = await supabase.auth.getUser();
+    if (data.user) await resolveRoles(data.user);
+  }, [user, resolveRoles]);
+
   const approveRequest = useCallback(
     async (request: AdminRequest) => {
       if (!user || !isAdmin) {
@@ -489,6 +517,7 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false);
     setIsFirstAdmin(false);
     setPendingAdminRequest(null);
+    setRejectedAdminRequest(null);
     setJudgeSession(null);
     setJudgeProfile(null);
   }, []);
@@ -503,6 +532,7 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
         adminQuota,
         firstAdminInfo,
         pendingAdminRequest,
+        rejectedAdminRequest,
         adminRequests,
         judgeSession,
         judgeProfile,
@@ -516,6 +546,7 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
         refreshAdminVerification,
         sendAdminPasswordReset,
         requestAdminJoin,
+        resubmitAdminRequest,
         approveRequest,
         rejectRequest,
         signInJudgeByNameAndEmail,
@@ -534,4 +565,4 @@ export function useArenaAuth(): ArenaAuthContextValue {
     throw new Error('useArenaAuth must be used inside ArenaAuthProvider');
   }
   return ctx;
-}
+    }
