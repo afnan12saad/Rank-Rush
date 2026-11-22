@@ -501,3 +501,24 @@ alter publication supabase_realtime add table public.event_archives;
 --    every join request (PGRST204).
 -- 2. Single-row seeds for settings_event and admin_quota are inserted right
 --    after their table definitions; without them quota enforcement no-opped.
+
+-- Migration 9: delete_event_archive. Admin-only permanent deletion of ONE archived
+-- event's saved standings (a single event_archives row). The caller must send the
+-- archive id and its exact event name; the server re-checks both. It never touches
+-- teams, judges, evaluations, settings, admins or any other archive.
+create or replace function public.delete_event_archive(p_id text, p_event_name text)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_name text;
+begin
+  if not public.is_admin() then raise exception 'admins only'; end if;
+  select event_name into v_name from event_archives where id = p_id;
+  if not found then raise exception 'archived event not found'; end if;
+  if btrim(v_name) is distinct from btrim(coalesce(p_event_name, '')) then
+    raise exception 'event name does not match; nothing deleted';
+  end if;
+  delete from event_archives where id = p_id;
+end $$;
+revoke all on function public.delete_event_archive(text, text) from public, anon;
+grant execute on function public.delete_event_archive(text, text) to authenticated;
