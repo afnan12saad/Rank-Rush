@@ -906,4 +906,4 @@ export async function initializeEverythingToZeroWith15Teams(
     settings ?? { ...DEFAULT_EVENT_SETTINGS },
     meta?.requestedBy ?? 'admin',
   );
-    }
+}
