@@ -23,7 +23,6 @@ import {
   INITIAL_15_TEAMS,
   MAX_CRITERION_SCORE,
   MIN_CRITERION_SCORE,
-  MAX_ADMIN_USERS,
   calculateLeaderboard,
   generateVerificationCode,
   isValidCriteriaScores,
@@ -236,7 +235,6 @@ export function subscribeAdminQuota(
     if (error) throw error;
     return {
       count: data?.count ?? 0,
-      maxAdmins: data?.max_admins ?? MAX_ADMIN_USERS,
       firstAdminEmail: data?.first_admin_email ?? undefined,
       firstAdminUid: data?.first_admin_uid ?? undefined,
       updatedAt: data?.updated_at,
@@ -306,7 +304,7 @@ export async function getFirstAdminInfo(): Promise<{
   return { email: admin.email, uid: admin.uid, count: quota?.count ?? 0 };
 }
 
-// ---------- admin join requests (cap of MAX_ADMIN_USERS enforced by RPC) ----------
+// ---------- admin join requests (no fixed cap; any existing admin may approve) ----------
 
 export async function createAdminJoinRequest(params: {
   uid: string;
@@ -315,14 +313,9 @@ export async function createAdminJoinRequest(params: {
 }): Promise<AdminRequest> {
   const quota = await supabase
     .from('admin_quota')
-    .select('count, max_admins, first_admin_email, first_admin_uid')
+    .select('first_admin_email, first_admin_uid')
     .eq('id', true)
     .maybeSingle();
-  const count = quota.data?.count ?? 0;
-  const maxAdmins = quota.data?.max_admins ?? MAX_ADMIN_USERS;
-  if (count >= maxAdmins) {
-    throw new Error(`The admin team is full (${maxAdmins} admins maximum).`);
-  }
   const existing = await supabase
     .from('admin_requests')
     .select('*')
@@ -347,32 +340,6 @@ export async function createAdminJoinRequest(params: {
     .single();
   if (error) throw error;
   return mapAdminRequest(data);
-}
-
-export interface AdminSlotUsage {
-  count: number;
-  maxAdmins: number;
-  admins: AdminUser[];
-  /** Kept for the existing settings UI: always true (no slots to reconcile). */
-  reconciled: boolean;
-  /** Free admin seat labels, length = maxAdmins - count. */
-  free: string[];
-}
-
-export async function getAdminSlotUsage(): Promise<AdminSlotUsage> {
-  const [{ data: admins }, { data: quota }] = await Promise.all([
-    supabase.from('admins').select('*'),
-    supabase.from('admin_quota').select('*').eq('id', true).maybeSingle(),
-  ]);
-  const count = quota?.count ?? (admins ?? []).length;
-  const maxAdmins = quota?.max_admins ?? MAX_ADMIN_USERS;
-  return {
-    count,
-    maxAdmins,
-    admins: (admins ?? []).map(mapAdmin),
-    reconciled: true,
-    free: Array.from({ length: Math.max(0, maxAdmins - count) }, (_, i) => `seat-${count + i + 1}`),
-  };
 }
 
 export async function approveAdminJoinRequest(
