@@ -41,10 +41,13 @@ app in this repository. Nothing here deploys anything - deployment is yours.
   sender address is a free Gmail address that cannot be domain-authenticated,
   Brevo rewrites the From ADDRESS to its own domain
   (...@....brevosend.com) on outgoing mail. The display name is configured
-  as "rankrush" in both Supabase (sender name) and Brevo (sender); whether
-  it shows through the rewrite should be confirmed against a real received
-  email. Adding and authenticating your own domain in Brevo later removes
-  the rewrite and improves deliverability.
+  as "rankrush" in both Supabase (sender name) and Brevo (sender), and a
+  delivered test email confirmed the sender displays as "rankrush" in the
+  recipient's mail app. Deliverability caveat: that test email landed in
+  the recipient's JUNK folder, so inbox placement is not guaranteed with
+  an unauthenticated free Gmail sender (marking it "not junk" once trains
+  that mailbox). Adding and authenticating your own domain in Brevo later
+  removes the rewrite and improves deliverability.
 - **SMTP key maintenance (important between events)** - the Brevo SMTP key has
   no fixed expiry date, but Brevo deactivates ANY key that sends no
   successful email for 90 days, even with "no expiration" set. Brevo emails a
