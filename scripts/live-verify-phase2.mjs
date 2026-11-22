@@ -17,7 +17,7 @@ ok('C1 owner sign-in', !oe, JSON.stringify(oe));
   const { data, error } = await owner.from('admins').select('*');
   ok('C2 owner reads admins (is_admin)', !error && data.length === 1 && data[0].is_first_admin, JSON.stringify({error,n:data?.length}));
   const { data: q } = await owner.from('admin_quota').select('*').eq('id', true).single();
-  ok('C3 quota max_admins is 5, count 1', q.max_admins === 5 && q.count === 1, JSON.stringify(q));
+  ok('C3 quota count 1 (no fixed max any more)', q.count === 1, JSON.stringify(q));
 }
 
 // D: five candidates file join requests
@@ -28,36 +28,30 @@ for (const n of ['adm1','adm2','adm3','adm4','adm5']) {
   ok('D-'+n+' join request filed', !error, JSON.stringify(error));
 }
 
-// E: owner approves 4 -> cap at 5; 5th approval fails atomically
-for (const n of ['adm1','adm2','adm3','adm4']) {
+// E: owner approves all five candidates - no fixed cap any more
+for (const n of ['adm1','adm2','adm3','adm4','adm5']) {
   const { error } = await owner.rpc('approve_admin_request', { p_uid: uids[n], p_approved_by: 'Test Owner' });
   ok('E-'+n+' approved', !error, JSON.stringify(error));
 }
 {
-  const { error } = await owner.rpc('approve_admin_request', { p_uid: uids.adm5, p_approved_by: 'Test Owner' });
-  ok('E1 6th admin rejected at cap 5', !!error && /admin limit of 5/.test(error.message), JSON.stringify(error));
   const results = await Promise.all([1,2,3].map(() => owner.rpc('approve_admin_request', { p_uid: uids.adm5, p_approved_by: 'Test Owner' })));
-  ok('E2 parallel extra approvals all rejected', results.every(r => !!r.error), JSON.stringify(results.map(r=>r.error?.message)));
+  ok('E2 repeat approvals rejected (no pending request)', results.every(r => !!r.error && /no pending request/.test(r.error.message)), JSON.stringify(results.map(r=>r.error?.message)));
   const { data: q } = await owner.from('admin_quota').select('*').eq('id', true).single();
   const { data: admins } = await owner.from('admins').select('uid');
-  ok('E3 count stays 5 with 5 admin rows', q.count === 5 && admins.length === 5, JSON.stringify({q, n: admins.length}));
+  ok('E3 count 6 with 6 admin rows (owner + 5)', q.count === 6 && admins.length === 6, JSON.stringify({q, n: admins.length}));
 }
 
-// F: seat freeing: remove adm4 -> 4 admins; adm5 approval succeeds -> 5; remove adm5 -> back to 4 (race setup)
+// F: removals; adm5 ends as a non-admin again for section G
 {
   const { error: rm } = await owner.rpc('remove_admin', { p_uid: uids.adm4 });
-  ok('F1 remove adm4 frees a seat', !rm, JSON.stringify(rm));
+  ok('F1 remove adm4', !rm, JSON.stringify(rm));
   const { error: self } = await owner.rpc('remove_admin', { p_uid: uids.owner });
   ok('F2 cannot remove self', !!self && /yourself/.test(self.message), JSON.stringify(self));
-  const { error: ap } = await owner.rpc('approve_admin_request', { p_uid: uids.adm5, p_approved_by: 'Test Owner' });
-  ok('F3 adm5 approved after seat freed', !ap, JSON.stringify(ap));
-  const { data: q } = await owner.from('admin_quota').select('*').eq('id', true).single();
-  ok('F4 count back to 5', q.count === 5, JSON.stringify(q));
   const { error: rm2 } = await owner.rpc('remove_admin', { p_uid: uids.adm5 });
-  ok('F5 adm5 removed again, ends at 4 admins for race test', !rm2, JSON.stringify(rm2));
+  ok('F3 adm5 removed (non-admin again for G)', !rm2, JSON.stringify(rm2));
   const { data: admins } = await owner.from('admins').select('uid');
   const { data: q2 } = await owner.from('admin_quota').select('*').eq('id', true).single();
-  ok('F6 final state 4 admins, 1 seat free', admins.length === 4 && q2.count === 4, JSON.stringify({n:admins.length,c:q2.count}));
+  ok('F4 final state 4 admins', admins.length === 4 && q2.count === 4, JSON.stringify({n:admins.length,c:q2.count}));
 }
 
 // G: non-admin cannot use admin RPCs
