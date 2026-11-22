@@ -305,7 +305,7 @@ export function AdminLoginPage() {
             </div>
           )}
 
-          {notice && (
+          {notice && !rejectedAdminRequest && (
             <div
               role="status"
               className="p-3.5 rounded-lg bg-[#16A34A]/15 text-[#4ADE80] text-sm flex items-start gap-2.5"
@@ -871,4 +871,4 @@ export function AdminLoginPage() {
       <SiteFooter />
     </div>
   );
-          }
+}

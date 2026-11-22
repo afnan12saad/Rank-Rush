@@ -164,7 +164,7 @@ export function FinalResultsPage() {
                 </Link>
               )}
               <Link
-                to="/"
+                to="/home"
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#24436B] bg-[#091829] text-slate-200 text-sm font-semibold hover:bg-[#102640] transition-colors"
               >
                 Return Home
