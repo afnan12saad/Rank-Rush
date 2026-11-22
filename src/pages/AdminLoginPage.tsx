@@ -132,7 +132,7 @@ export function AdminLoginPage() {
         confirmPassword,
       });
       setNotice(
-        `Verification email sent to ${email.trim()}. Your request is waiting for administrator approval.`,
+        `Verification email sent to ${email.trim()}. Open the link in that email to verify your address, then sign in - your admin approval request is created automatically at first sign-in.`,
       );
     } catch (err) {
       setError(
@@ -595,12 +595,13 @@ export function AdminLoginPage() {
                   <div className="p-3.5 rounded-lg bg-[#081422] border border-[#193254] text-xs text-slate-300 leading-relaxed space-y-1">
                     <p className="font-semibold text-white flex items-center gap-1.5">
                       <Mail className="w-3.5 h-3.5 text-[#F5B942]" />
-                      First Admin Verification System
+                      Admin Approval Required
                     </p>
                     <p className="text-slate-400">
-                      If you are the primary administrator, you will be
-                      initialized automatically. If an administrator already
-                      exists, your request must be approved by an existing admin.
+                      Verify your email, then an existing administrator approves
+                      your request. The first administrator is bound manually by
+                      the project owner - no account is ever initialized
+                      automatically.
                     </p>
                   </div>
 
