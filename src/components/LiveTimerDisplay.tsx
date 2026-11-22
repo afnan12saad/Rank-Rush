@@ -194,4 +194,4 @@ export function LiveTimerDisplay({
       </span>
     </div>
   );
-            }
+}
