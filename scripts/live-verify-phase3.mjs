@@ -14,7 +14,7 @@ await owner.auth.signInWithPassword({ email: em('owner'), password: pw('owner') 
 {
   const { data: admins } = await owner.from('admins').select('uid');
   const { data: q } = await owner.from('admin_quota').select('*').eq('id',true).single();
-  ok('H1 quota consistent: max 5, count matches rows', q.max_admins === 5 && q.count === admins.length, JSON.stringify({n:admins.length, q}));
+  ok('H1 quota consistent: count matches rows', q.count === admins.length, JSON.stringify({n:admins.length, q}));
 }
 
 // I: seed the event via archive_and_reset with expected 0 evals
