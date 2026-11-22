@@ -238,8 +238,10 @@ export function AdminLoginPage() {
 
   const headingText = isAdmin
     ? 'Administrator Access Verified'
-    : user && !user.emailVerified
-      ? 'Verify Your Admin Email'
+    : user?.isAnonymous
+      ? 'Judge Session Active'
+      : user && !user.emailVerified
+        ? 'Verify Your Admin Email'
       : user && !isAdmin
         ? 'Admin Approval Required'
         : mode === 'register'
@@ -320,6 +322,37 @@ export function AdminLoginPage() {
                   className="min-h-[46px] px-4 py-2.5 rounded-lg border border-[#24436B] bg-[#091829] text-sm font-semibold text-slate-200 hover:bg-[#102640] transition-colors"
                 >
                   Sign Out
+                </button>
+              </div>
+            </div>
+          ) : user && user.isAnonymous ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-[#081422] space-y-2 text-sm">
+                <div className="font-bold text-[#F5B942] flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4" />
+                  Judge Session Active
+                </div>
+                <p className="text-slate-200 leading-relaxed">
+                  You are signed in with a judge scoring session. The Admin
+                  Console uses separate administrator accounts, so sign out of
+                  the judge session first to sign in or register as an
+                  administrator.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Link
+                  to="/judge/dashboard"
+                  className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#24436B] bg-[#091829] text-xs font-semibold text-slate-200 hover:bg-[#102640] transition-colors"
+                >
+                  Continue Judging
+                </Link>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void logoutAll()}
+                  className="min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#2563EB] text-xs font-semibold text-white hover:bg-[#1d4ed8] transition-colors disabled:opacity-60"
+                >
+                  Sign Out &amp; Switch to Admin Sign In
                 </button>
               </div>
             </div>
