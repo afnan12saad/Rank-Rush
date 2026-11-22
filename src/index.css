@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --arena-navy: #092B59;
+    --arena-royal: #2563EB;
+    --arena-gold: #F5B942;
+    --arena-success: #16A34A;
+    --arena-text: #1F2937;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: #F1F5F9;
+    background-color: #071422;
+  }
+
+  @media print {
+    body {
+      background-color: #FFFFFF !important;
+      color: #092B59 !important;
+    }
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  }
+
+  .font-mono-tabular {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes subtleReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal {
+  animation: subtleReveal 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal {
+    animation: none;
+  }
+}
