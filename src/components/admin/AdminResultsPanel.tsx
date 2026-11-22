@@ -375,4 +375,4 @@ export function AdminResultsPanel({
       </div>
     </div>
   );
-              }
+}
