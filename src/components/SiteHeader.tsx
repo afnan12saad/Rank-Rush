@@ -3,11 +3,20 @@ import { Link, useLocation } from 'react-router-dom';
 import { Gavel, Home, Menu, ShieldCheck, X } from 'lucide-react';
 import { BrandMark } from './BrandMark';
 import { useArenaAuth } from '../context/ArenaAuthContext';
+import { ADMIN_NAV_TABS, parseAdminTab } from './admin/adminNav';
 
 export function SiteHeader() {
   const location = useLocation();
-  const { isAdmin, judgeProfile } = useArenaAuth();
+  const { isAdmin, judgeProfile, adminRequests } = useArenaAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const onAdminDashboard = location.pathname === '/admin';
+  const activeAdminTab = parseAdminTab(
+    new URLSearchParams(location.search).get('tab'),
+  );
+  const pendingAdminCount = adminRequests.filter(
+    (r) => r.status === 'pending',
+  ).length;
 
   const judgeTarget = judgeProfile ? '/judge/dashboard' : '/judge/login';
   const adminTarget = isAdmin ? '/admin' : '/admin/login';
@@ -39,7 +48,7 @@ export function SiteHeader() {
 
   useEffect(() => {
     setDrawerOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   const isActive = (to: string) => {
     if (to === '/home') return location.pathname === '/home';
@@ -179,6 +188,45 @@ export function SiteHeader() {
             );
           })}
         </nav>
+
+        {isAdmin && (
+          <div className="px-3 pt-3 mt-1 border-t border-[#183152]">
+            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Admin Console
+            </p>
+            <nav aria-label="Admin Console" className="space-y-1">
+              {ADMIN_NAV_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = onAdminDashboard && activeAdminTab === tab.key;
+                const to =
+                  tab.key === 'overview' ? '/admin' : `/admin?tab=${tab.key}`;
+                return (
+                  <Link
+                    key={tab.key}
+                    to={to}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      active
+                        ? 'bg-[#2563EB] text-white font-semibold'
+                        : 'text-slate-300 hover:bg-[#10233A] hover:text-white'
+                    }`}
+                  >
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        active ? 'text-white' : 'text-[#F5B84C]'
+                      }`}
+                    />
+                    <span className="flex-1">{tab.label}</span>
+                    {tab.key === 'settings' && pendingAdminCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-[#F5B942] text-[#071422] text-[10px] font-bold">
+                        {pendingAdminCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
 
         <div className="px-3 pt-3 mt-1 border-t border-[#183152]">
           <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
