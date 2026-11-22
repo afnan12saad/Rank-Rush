@@ -33,7 +33,6 @@ import {
   subscribeTeams,
 } from '../services/arenaService';
 import {
-  MAX_ADMIN_USERS,
   validateAdminRegistrationInput,
   resolveAdminRequestView,
   validateJudgeNameAndEmail,
@@ -133,7 +132,6 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
   const [isFirstAdmin, setIsFirstAdmin] = useState(false);
   const [adminQuota, setAdminQuota] = useState<AdminQuota>({
     count: 0,
-    maxAdmins: MAX_ADMIN_USERS,
   });
   const [firstAdminInfo, setFirstAdminInfo] = useState<{
     email: string;
@@ -565,4 +563,4 @@ export function useArenaAuth(): ArenaAuthContextValue {
     throw new Error('useArenaAuth must be used inside ArenaAuthProvider');
   }
   return ctx;
-    }
+}
