@@ -588,4 +588,4 @@ export function validateJudgeNameAndEmail(
 export function generateJudgeIdFromUid(uid: string): string {
   const cleaned = uid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18);
   return `J_${cleaned || Date.now().toString(36).toUpperCase()}`;
-  }
+}
