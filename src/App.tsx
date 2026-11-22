@@ -19,7 +19,8 @@ export default function App() {
       <ArenaAuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<Navigate to="/judge/login" replace />} />
+            <Route path="/home" element={<HomePage />} />
             <Route path="/judge/login" element={<JudgeLoginPage />} />
             <Route path="/judge/dashboard" element={<JudgeDashboardPage />} />
             <Route path="/judge/evaluate/:teamId" element={<JudgeEvaluatePage />} />
