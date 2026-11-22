@@ -428,6 +428,10 @@ begin
   delete from admins where uid = p_uid;
   if found then
     update admin_quota set count = greatest(count - 1, 0), updated_at = now() where id;
+    -- Free the join-request slot so a removed admin can request access again
+    -- later (admin_requests.uid is the primary key; a leftover 'approved' row
+    -- blocked any fresh request with a duplicate-key error).
+    delete from admin_requests where uid = p_uid;
   end if;
 end $$;
 
