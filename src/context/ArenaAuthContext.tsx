@@ -534,4 +534,4 @@ export function useArenaAuth(): ArenaAuthContextValue {
     throw new Error('useArenaAuth must be used inside ArenaAuthProvider');
   }
   return ctx;
-              }
+}
