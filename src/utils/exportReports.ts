@@ -211,4 +211,4 @@ export function exportLeaderboardPdf(
 
   const slug = settings.eventName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   doc.save(`${slug || 'rank-rush'}-leaderboard.pdf`);
-                                         }
+}
