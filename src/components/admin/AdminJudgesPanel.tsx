@@ -352,4 +352,4 @@ export function AdminJudgesPanel({
       />
     </div>
   );
-        }
+}
