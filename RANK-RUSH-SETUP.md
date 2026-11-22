@@ -23,16 +23,31 @@ app in this repository. Nothing here deploys anything - deployment is yours.
 ## Auth configuration (deliberate choices)
 
 - **Anonymous sign-ins: ON** - judges join with name + email, no password.
-- **Email confirmation: OFF** - Supabase's default email sender is rate-limited
-  (about 2 emails/hour), which blocked sign-ups on the old project. With it off,
-  accounts sign in immediately. Consequence: a typed email address is NOT
-  verified. Admin approval is by authenticated account (UID), never by email
-  address alone - approve only requests whose name/email you recognize from the
-  Admin Console.
-- **Password recovery** emails also go through the rate-limited default sender.
-  If you want reliable confirmation/recovery emails, add a free custom SMTP
-  sender under Authentication > Emails > SMTP settings, then re-enable
-  "Confirm email" under Authentication > Sign In / Providers if you want it.
+- **Email confirmation: ON (link-based)** - new admin accounts must open the
+  confirmation link emailed to them before they can sign in. After the first
+  confirmed sign-in, their admin join request is created automatically and an
+  existing admin approves it. A verified email is never an admin grant by
+  itself - approval is by authenticated account (UID).
+- **Confirm password** is required at signup (live mismatch check plus
+  server-side validation).
+- **Forgot / reset password** - the Forgot password form on Admin Login emails
+  a reset link; the link opens the Set a New Admin Password page
+  (`/admin/reset-password`), which saves the new password and ends the
+  temporary recovery session.
+- **Default sender limits (important)** - until you add a custom SMTP sender,
+  Supabase's built-in email service (a) delivers ONLY to email addresses of
+  members of your Supabase organization (your own account address), refusing
+  everyone else, and (b) allows only a couple of auth emails per hour. That is
+  enough for your own first-admin setup, but other admins (seats 2-5) and real
+  events need a custom SMTP sender: Authentication > SMTP Settings > Enable
+  custom SMTP (any free SMTP account works; new senders start at 30
+  messages/hour, adjustable under Rate Limits).
+- **Site URL / redirects** - currently set for local development
+  (http://localhost:3000, with /admin/login and /admin/reset-password on the
+  redirect allow list, plus the :4173 preview port). After you deploy, set
+  Authentication > URL Configuration > Site URL to your deployed app URL and
+  add https://YOUR-DOMAIN/admin/login and /admin/reset-password to the
+  Redirect URLs allow list, or email links will not open the app.
 
 ## First admin (you) - one-time secure binding
 
