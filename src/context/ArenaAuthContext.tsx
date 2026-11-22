@@ -396,7 +396,7 @@ export function ArenaAuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/admin/login`,
+        redirectTo: `${window.location.origin}/admin/reset-password`,
       });
       if (error) throw error;
     } catch (err) {
