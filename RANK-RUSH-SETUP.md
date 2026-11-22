@@ -34,14 +34,26 @@ app in this repository. Nothing here deploys anything - deployment is yours.
   a reset link; the link opens the Set a New Admin Password page
   (`/admin/reset-password`), which saves the new password and ends the
   temporary recovery session.
-- **Default sender limits (important)** - until you add a custom SMTP sender,
-  Supabase's built-in email service (a) delivers ONLY to email addresses of
-  members of your Supabase organization (your own account address), refusing
-  everyone else, and (b) allows only a couple of auth emails per hour. That is
-  enough for your own first-admin setup, but other admins (seats 2-5) and real
-  events need a custom SMTP sender: Authentication > SMTP Settings > Enable
-  custom SMTP (any free SMTP account works; new senders start at 30
-  messages/hour, adjustable under Rate Limits).
+- **Custom SMTP sender: CONFIGURED (Brevo free plan)** - auth emails send
+  through Brevo's SMTP relay (smtp-relay.brevo.com, port 587) with display
+  name "rankrush", to any recipient. New custom senders start at 30
+  messages/hour (adjustable under Authentication > Rate Limits). Because the
+  sender address is a free Gmail address that cannot be domain-authenticated,
+  Brevo rewrites the From ADDRESS to its own domain
+  (...@....brevosend.com) on outgoing mail; the display name stays
+  "rankrush". Adding and authenticating your own domain in Brevo later
+  removes the rewrite and improves deliverability.
+- **SMTP key maintenance (important between events)** - the Brevo SMTP key has
+  no fixed expiry date, but Brevo deactivates ANY key that sends no
+  successful email for 90 days, even with "no expiration" set. Brevo emails a
+  reminder to the account address 7 days before and on the day. If the app
+  sleeps between events: reactivate the key in Brevo (Settings > SMTP & API),
+  or generate a new key there and paste it into Authentication > SMTP
+  Settings > Password, then Save. Source:
+  https://help.brevo.com/hc/en-us/articles/7959631848850-Create-and-manage-your-SMTP-keys
+- **Brevo account** - registered on the project owner's Gmail (login saved in
+  the Instinct vault). The free plan (300 emails/day) covers this app's
+  volume; no paid upgrade is needed.
 - **Site URL / redirects** - currently set for local development
   (http://localhost:3000, with /admin/login and /admin/reset-password on the
   redirect allow list, plus the :4173 preview port). After you deploy, set
@@ -99,4 +111,4 @@ denial boundaries (Data API tables AND RPCs), five-criteria range/shape
 rejection, judge own-score isolation, 5-admin cap including parallel-approval
 atomicity and seat freeing, publish/unpublish audience visibility, archive/reset
 lifecycle with stale-snapshot rejection, and immediate account sign-in.
-Unit tests: 18/18. Typecheck and production build: clean.
+Unit tests: 19/19. Typecheck and production build: clean.
