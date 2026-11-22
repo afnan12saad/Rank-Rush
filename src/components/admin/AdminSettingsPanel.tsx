@@ -12,10 +12,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import {
-  getAdminSlotUsage,
   removeAdminAccount,
   saveEventSettings,
-  type AdminSlotUsage,
 } from '../../services/arenaService';
 import type {
   AdminQuota,
@@ -23,7 +21,6 @@ import type {
   AdminUser,
   EventSettings,
 } from '../../types/arena';
-import { MAX_ADMIN_USERS } from '../../utils/scoring';
 import { ConfirmDialog } from '../ConfirmDialog';
 
 interface AdminSettingsPanelProps {
@@ -59,15 +56,6 @@ export function AdminSettingsPanel({
   const [removeTarget, setRemoveTarget] = useState<AdminUser | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
-  const [slotUsage, setSlotUsage] = useState<AdminSlotUsage | null>(null);
-  const refreshSlots = () => {
-    void getAdminSlotUsage().then(setSlotUsage).catch(() => setSlotUsage(null));
-  };
-  useEffect(refreshSlots, [admins.length]);
-  const adminLimitReached =
-    admins.length >= MAX_ADMIN_USERS ||
-    (slotUsage !== null && (slotUsage.free.length === 0));
-
   // Sync local form fields whenever Firestore event settings update
   useEffect(() => {
     setEventName(settings.eventName);
@@ -375,8 +363,7 @@ export function AdminSettingsPanel({
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      disabled={isActionBusy || adminLimitReached}
-                      title={adminLimitReached ? 'Admin limit reached' : undefined}
+                      disabled={isActionBusy}
                       onClick={() => void handleApprove(req)}
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-semibold transition-colors disabled:opacity-50"
                     >
@@ -415,20 +402,14 @@ export function AdminSettingsPanel({
               Authorized Admin Accounts
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Maximum of {MAX_ADMIN_USERS} admin accounts in total, owner included. Every new admin needs approval.
+              No fixed limit on admin accounts. Every new admin needs approval.
               Email addresses are not verified; approve only people you have confirmed outside the app.
             </p>
           </div>
           <span className="px-2.5 py-1 rounded-md bg-[#081422] text-xs font-semibold font-mono-tabular text-[#F5B942]">
-            {admins.length} of {MAX_ADMIN_USERS} admin accounts
+            {admins.length} admin {admins.length === 1 ? 'account' : 'accounts'}
           </span>
         </div>
-        {adminLimitReached && slotUsage?.reconciled && (
-          <div className="px-4 py-2 border-b border-[#152B46] text-xs text-slate-300">
-            All {MAX_ADMIN_USERS} admin seats are in use. Remove an admin to add another.
-          </div>
-        )}
-
         <div className="divide-y divide-[#152B46]">
           {admins.length === 0 ? (
             <div className="px-6 py-5 text-sm text-slate-400">
