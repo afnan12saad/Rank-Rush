@@ -100,7 +100,7 @@ export function ProjectorPage() {
         <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-3">
-              <BrandMark className="w-8 h-8" />
+              <BrandMark className="h-8 w-auto" />
               <span className="font-display font-bold text-xl sm:text-2xl tracking-tight text-white">
                 RANK RUSH
               </span>
