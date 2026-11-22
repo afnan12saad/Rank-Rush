@@ -11,11 +11,11 @@ const ok = (name, cond, extra='') => { if (cond) { pass++; console.log('PASS '+n
 const owner = createClient(URL, ANON);
 await owner.auth.signInWithPassword({ email: em('owner'), password: pw('owner') });
 
-// R: exact race - 4 admins, 1 seat, 5 concurrent candidates
+// R: concurrency - 4 admins, 5 concurrent candidates, no cap so all can win
 const raceUids = [];
 {
   const { data: admins } = await owner.from('admins').select('uid');
-  ok('R0 precondition: 4 admins, 1 seat', admins.length === 4, 'n='+admins.length);
+  ok('R0 precondition: 4 admins', admins.length === 4, 'n='+admins.length);
   for (let i = 1; i <= 5; i++) {
     const c = createClient(URL, ANON);
     const { data, error } = await c.auth.signUp({ email: em('race'+i), password: pw('race'+i) });
@@ -33,18 +33,23 @@ const raceUids = [];
   }
   const results = await Promise.all(raceUids.map(u => owner.rpc('approve_admin_request', { p_uid: u, p_approved_by: 'Race Test' })));
   const wins = results.filter(r => !r.error).length;
-  const losses = results.filter(r => !!r.error && /admin limit of 5/.test(r.error.message)).length;
-  ok('R1 exactly one of five concurrent approvals wins the seat', wins === 1 && losses === 4, JSON.stringify(results.map(r => r.error ? r.error.message : 'WIN')));
+  ok('R1 all five concurrent approvals succeed (no cap)', wins === 5, JSON.stringify(results.map(r => r.error ? r.error.message : 'WIN')));
   const { data: q } = await owner.from('admin_quota').select('*').eq('id', true).single();
   const { data: admins2 } = await owner.from('admins').select('uid');
-  ok('R2 count 5 with 5 rows after race', q.count === 5 && admins2.length === 5, JSON.stringify({c:q.count,n:admins2.length}));
+  ok('R2 count 9 with 9 rows after race', q.count === 9 && admins2.length === 9, JSON.stringify({c:q.count,n:admins2.length}));
   const extra = await owner.rpc('approve_admin_request', { p_uid: raceUids[4], p_approved_by: 'Race Test' });
-  ok('R3 no further approvals at cap', !!extra.error, 'no error');
-  // free the seat again: remove whoever won
-  const winnerIdx = results.findIndex(r => !r.error);
-  await owner.rpc('remove_admin', { p_uid: raceUids[winnerIdx] });
+  ok('R3 repeat approval rejected (no pending request)', !!extra.error && /no pending request/.test(extra.error.message), JSON.stringify(extra.error));
+  // clean up: remove the five race winners and re-file their pending requests,
+  // which remove_admin clears; later sections need them pending
+  for (const u of raceUids) {
+    await owner.rpc('remove_admin', { p_uid: u });
+  }
   const { data: q2 } = await owner.from('admin_quota').select('*').eq('id', true).single();
-  ok('R4 seat freed again, back to 4', q2.count === 4, JSON.stringify(q2));
+  ok('R4 race winners removed, back to 4', q2.count === 4, JSON.stringify(q2));
+  for (let i = 0; i < raceUids.length; i++) {
+    const { error: re } = await owner.from('admin_requests').insert({ uid: raceUids[i], email: em('race'+(i+1)), name: 'Race '+(i+1), verification_code: String(100001+i), status: 'pending', first_admin_email: em('owner'), first_admin_uid: uids.owner });
+    ok('R5-race'+(i+1)+' pending request re-filed', !re, JSON.stringify(re));
+  }
   writeFileSync('/tmp/rr-race-uids.json', JSON.stringify(raceUids));
 }
 
