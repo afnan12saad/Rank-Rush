@@ -427,4 +427,4 @@ export function PodiumShowcase({
     </div>
     </MotionConfig>
   );
-              }
+}
