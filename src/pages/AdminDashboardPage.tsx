@@ -1,18 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Archive,
-  Award,
   CheckCircle2,
-  LayoutDashboard,
   LogOut,
   MonitorPlay,
-  QrCode,
-  Settings,
   ShieldCheck,
-  Sliders,
-  UserCheck,
-  Users,
 } from 'lucide-react';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
@@ -26,6 +18,7 @@ import { AdminQrPanel } from '../components/admin/AdminQrPanel';
 import { AdminArchivesPanel } from '../components/admin/AdminArchivesPanel';
 import { AdminResultsPanel } from '../components/admin/AdminResultsPanel';
 import { AdminSettingsPanel } from '../components/admin/AdminSettingsPanel';
+import { parseAdminTab, type AdminTab } from '../components/admin/adminNav';
 import { useArenaAuth } from '../context/ArenaAuthContext';
 import {
   DEFAULT_EVENT_SETTINGS,
@@ -49,16 +42,6 @@ import {
   MAX_ADMIN_USERS,
 } from '../utils/scoring';
 
-type AdminTab =
-  | 'overview'
-  | 'teams'
-  | 'judges'
-  | 'controls'
-  | 'qr'
-  | 'results'
-  | 'archives'
-  | 'settings';
-
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const {
@@ -75,7 +58,11 @@ export function AdminDashboardPage() {
     logoutAll,
   } = useArenaAuth();
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parseAdminTab(searchParams.get('tab'));
+  const setActiveTab = (tab: AdminTab) => {
+    setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
+  };
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [judges, setJudges] = useState<Judge[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
@@ -163,18 +150,6 @@ export function AdminDashboardPage() {
       </div>
     );
   }
-
-  const navTabs: { key: AdminTab; label: string; icon: typeof LayoutDashboard }[] =
-    [
-      { key: 'overview', label: 'Overview & Leaderboard', icon: LayoutDashboard },
-      { key: 'teams', label: 'Teams', icon: Users },
-      { key: 'judges', label: 'Judges', icon: UserCheck },
-      { key: 'controls', label: 'Event Timer & Controls', icon: Sliders },
-      { key: 'qr', label: 'QR Code', icon: QrCode },
-      { key: 'results', label: 'Results & Exports', icon: Award },
-      { key: 'archives', label: 'Archived Events', icon: Archive },
-      { key: 'settings', label: 'Event Settings', icon: Settings },
-    ];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#071422] text-slate-100">
@@ -302,41 +277,9 @@ export function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Sidebar + Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <aside className="lg:col-span-3 bg-[#0D1E33] border border-[#1E3A5F] rounded-xl p-3 space-y-1">
-            {navTabs.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.key;
-              const isSettingsWithPending =
-                tab.key === 'settings' && pendingRequests.length > 0;
-
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors ${
-                    active
-                      ? 'bg-[#2563EB] text-white'
-                      : 'text-slate-300 hover:bg-[#132945] hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{tab.label}</span>
-                  </div>
-                  {isSettingsWithPending && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-[#F5B942] text-[#071422] text-[10px] font-bold">
-                      {pendingRequests.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </aside>
-
-          <section className="lg:col-span-9 space-y-6">
+        {/* Main Content (admin navigation lives in the header sidebar) */}
+        <div>
+          <section className="space-y-6">
             {activeTab === 'overview' && (
               <div className="space-y-6">
                 {/* KPI Grid */}
@@ -593,4 +536,4 @@ export function AdminDashboardPage() {
       <SiteFooter />
     </div>
   );
-}
+            }
