@@ -429,12 +429,6 @@ export const INITIAL_15_TEAMS: Array<{
   },
 ];
 
-// Maximum admin accounts in total (owner included). Enforced server-side by the
-// approve_admin_request RPC and the admin_quota table (row lock), see supabase/schema.sql.
-export const MAX_ADMIN_USERS = 5;
-export const ADMIN_SLOT_IDS = ['s1', 's2', 's3', 's4', 's5'] as const;
-
-
 export type AdminRequestViewState = 'pending' | 'rejected' | 'none';
 
 /**
