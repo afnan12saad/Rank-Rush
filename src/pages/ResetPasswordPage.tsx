@@ -228,4 +228,4 @@ export function ResetPasswordPage() {
       <SiteFooter />
     </div>
   );
-            }
+}
