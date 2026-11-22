@@ -14,6 +14,8 @@ app in this repository. Nothing here deploys anything - deployment is yours.
   design. Every rule is enforced server-side by Postgres RLS and RPCs
   (`supabase/schema.sql`). No secret keys are in this repo.
 - Database password is in your Instinct vault ("Supabase Rank Rush Event Postgres").
+  It is only needed for direct database connections (e.g. psql); every step in
+  this guide runs in the dashboard SQL Editor while you are signed in.
 - Schema of record: `supabase/schema.sql`. It now includes the single-row seeds
   (`settings_event`, `admin_quota`) and all columns the app writes - a fresh
   project works after running it once in the SQL editor.
@@ -57,11 +59,11 @@ owner step so nobody can claim the seat:
 2. You approve it from the join-requests panel. The cap of 5 is enforced by the
    database in one locked transaction - two simultaneous approvals cannot both
    succeed, and a 6th admin is always rejected.
-3. Removing an admin frees their seat. You cannot remove yourself or the first
-   admin.
-4. Known limitation: a removed admin's old join request stays "approved", so
-   they cannot re-request from the UI. To re-add them, set their row in
-   `admin_requests` back to `status = 'pending'` (SQL Editor), then approve.
+3. Removing an admin frees their seat and clears their old join request, so
+   they can request access again from the UI whenever needed. You cannot
+   remove yourself or the first admin. A rejected request stays rejected - a
+   rejected person needs a new account or a manual reset of their
+   `admin_requests` row to `status = 'pending'` (SQL Editor).
 
 ## Event operations
 
