@@ -13,6 +13,7 @@ import {
   MAX_TOTAL_SCORE,
   isScoredEvaluation,
   isValidCriteriaScores,
+  resolveAdminRequestView,
   sumCriteria,
 } from './scoring';
 import type { CriteriaScores, Evaluation, Judge, Team } from '../types/arena';
@@ -467,4 +468,14 @@ test('validatePasswordChange enforces length and confirmation match', async () =
     validatePasswordChange({ password: 'longenough1', confirmPassword: 'longenough1' }),
     null,
   );
+});
+
+test('resolveAdminRequestView maps latest request row to UI state', () => {
+  assert.equal(resolveAdminRequestView(null), 'none');
+  assert.equal(resolveAdminRequestView(undefined), 'none');
+  assert.equal(resolveAdminRequestView({ status: 'pending' }), 'pending');
+  assert.equal(resolveAdminRequestView({ status: 'rejected' }), 'rejected');
+  // approved means access comes from the admins table, not the request row
+  assert.equal(resolveAdminRequestView({ status: 'approved' }), 'none');
+  assert.equal(resolveAdminRequestView({ status: 'unexpected' }), 'none');
 });
