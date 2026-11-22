@@ -30,6 +30,8 @@ create table if not exists public.admin_requests (
 create table if not exists public.admin_quota (
   id boolean primary key default true check (id),
   count int not null default 0 check (count >= 0),
+  -- legacy column: the fixed admin cap was removed (Nov 2026) and this is no
+  -- longer enforced anywhere; kept only so existing databases need no ALTER.
   max_admins int not null default 5 check (max_admins >= 1),
   first_admin_email text,
   first_admin_uid uuid,
@@ -244,20 +246,18 @@ begin
   end if;
 end $$;
 
--- Approve an admin join request with a hard cap enforced in one transaction.
+-- Approve an admin join request. No fixed admin cap: any existing admin may
+-- approve. The row lock on the request keeps concurrent approvals of the same
+-- request consistent (the loser sees 'no pending request').
 create or replace function public.approve_admin_request(p_uid uuid, p_approved_by text)
 returns void
 language plpgsql security definer set search_path = public as $$
 declare
   v_req public.admin_requests;
-  v_count int;
-  v_max int;
 begin
   if not (select is_admin()) then raise exception 'admin only'; end if;
   select * into v_req from admin_requests where uid = p_uid and status = 'pending' for update;
   if not found then raise exception 'no pending request'; end if;
-  select count, max_admins into v_count, v_max from admin_quota where id for update;
-  if v_count >= v_max then raise exception 'admin limit of % reached', v_max; end if;
   insert into admins (uid, email, name, is_first_admin) values (v_req.uid, v_req.email, v_req.name, false);
   update admin_requests set status = 'approved', approved_at = now(), approved_by = left(p_approved_by,160), updated_at = now() where uid = p_uid;
   update admin_quota set count = count + 1, updated_at = now() where id;
