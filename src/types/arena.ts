@@ -120,7 +120,6 @@ export interface AdminUser {
 
 export interface AdminQuota {
   count: number;
-  maxAdmins?: number;
   firstAdminEmail?: string;
   firstAdminUid?: string;
   updatedAt?: unknown;
