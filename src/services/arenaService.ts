@@ -395,6 +395,15 @@ export async function rejectAdminJoinRequest(requestUid: string): Promise<void> 
   if (error) throw error;
 }
 
+/**
+ * Re-request admin access after a rejection. The RPC only moves the caller's
+ * own rejected row back to pending; it never grants a role or touches quota.
+ */
+export async function resubmitAdminJoinRequest(): Promise<void> {
+  const { error } = await supabase.rpc('resubmit_admin_request');
+  if (error) throw new Error(error.message);
+}
+
 export async function removeAdminAccount(targetUid: string): Promise<void> {
   const { error } = await supabase.rpc('remove_admin', { p_uid: targetUid });
   if (error) throw new Error(error.message);
