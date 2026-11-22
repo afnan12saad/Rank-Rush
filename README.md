@@ -9,8 +9,8 @@ publishes them.
 
 - React 19 + TypeScript + Vite + Tailwind 4 frontend
 - Supabase (free plan) backend: Postgres RLS + RPCs enforce every rule server-side
-- Up to **5 admin accounts** (owner included), each new admin approved by an
-  existing admin; the cap is enforced atomically in the database, not just the UI
+- **No limit on admin accounts**: each new admin is approved by an existing
+  admin, and approval is enforced in the database, not just the UI
 - Judges join with name + email (anonymous sign-in) and can only ever see their
   own scores
 - "Start New Event" archives the standings, then resets teams/scores so the same
