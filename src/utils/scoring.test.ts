@@ -452,3 +452,19 @@ test('tampered evaluations (total not matching criteria) are not scored', () => 
   const lb = calculateLeaderboard([makeTeam('a', 'A', 1)], [bad], 1);
   assert.equal(lb[0].submittedCount, 0);
 });
+
+test('validatePasswordChange enforces length and confirmation match', async () => {
+  const { validatePasswordChange } = await import('./scoring');
+  assert.equal(
+    validatePasswordChange({ password: 'short', confirmPassword: 'short' }),
+    'Password must be at least 8 characters long.',
+  );
+  assert.equal(
+    validatePasswordChange({ password: 'longenough1', confirmPassword: 'different1' }),
+    'New Password and Confirm Password do not match.',
+  );
+  assert.equal(
+    validatePasswordChange({ password: 'longenough1', confirmPassword: 'longenough1' }),
+    null,
+  );
+});
