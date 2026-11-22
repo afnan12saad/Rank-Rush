@@ -84,6 +84,15 @@ owner step so nobody can claim the seat:
 
 4. Sign in at Admin Login. You now hold admin seat 1 of 5.
 
+Current state (Nov 22, 2026): the first admin is already BOUND for the
+project owner (afnan12saad@gmail.com, seat 1 of 5) using the SQL step
+above - do not repeat it. Exception to note: because the Site URL was
+still localhost at setup time, the owner account's email was confirmed
+manually in the SQL editor, not through the emailed link. The
+confirmation/recovery LINK roundtrip is therefore NOT tested yet (see
+Verification status). Every other account must confirm via the emailed
+link as normal.
+
 ## Adding more admins (up to 5 total)
 
 1. The other person creates an account in the app; their join request appears
@@ -117,3 +126,10 @@ rejection, judge own-score isolation, 5-admin cap including parallel-approval
 atomicity and seat freeing, publish/unpublish audience visibility, archive/reset
 lifecycle with stale-snapshot rejection, and immediate account sign-in.
 Unit tests: 19/19. Typecheck and production build: clean.
+
+NOT yet tested: the emailed confirmation/recovery LINK roundtrip - the
+automatic emails send and arrive (Brevo-delivered, sender shows as
+"rankrush", may land in Junk), but their links still point to localhost
+until the Site URL is set to the deployed app URL. After deploying and
+updating URL Configuration, send one real signup or password-reset email
+and click its link to close this gap.
