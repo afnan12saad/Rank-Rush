@@ -361,6 +361,26 @@ grant update on public.judges to anon, authenticated;
 grant execute on function public.submit_score(text, text, jsonb, text) to anon, authenticated;
 grant execute on function public.publish_results(boolean, int, int, int, jsonb) to authenticated;
 grant execute on function public.approve_admin_request(uuid, text) to authenticated;
+
+-- Re-request after a rejection: the requester (and only the requester, via
+-- auth.uid()) can move their own rejected row back to pending. This never
+-- grants a role, touches admin_quota, or approves anything - an existing
+-- admin still has to approve through approve_admin_request.
+create or replace function public.resubmit_admin_request()
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update admin_requests
+     set status = 'pending',
+         verification_code = (100000 + floor(random() * 900000))::int::text,
+         requested_at = now(),
+         updated_at = now(),
+         approved_at = null,
+         approved_by = null
+   where uid = auth.uid() and status = 'rejected';
+  if not found then raise exception 'no rejected request to resubmit'; end if;
+end $$;
+grant execute on function public.resubmit_admin_request() to authenticated;
 grant execute on function public.archive_and_reset_event(text, text, jsonb, int, int, int, int, jsonb, jsonb) to authenticated;
 
 -- ============================================================================
