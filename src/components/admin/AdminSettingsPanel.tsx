@@ -514,4 +514,4 @@ export function AdminSettingsPanel({
       />
     </div>
   );
-                    }
+}
