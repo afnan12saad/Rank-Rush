@@ -6,6 +6,8 @@ import type {
   Judge,
   LeaderboardEntry,
   RatingStatusLabel,
+  RoundPhase,
+  RoundState,
   Team,
   TieBreakerMode,
 } from '../types/arena';
@@ -614,4 +616,47 @@ export function validateJudgeNameAndEmail(
 export function generateJudgeIdFromUid(uid: string): string {
   const cleaned = uid.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18);
   return `J_${cleaned || Date.now().toString(36).toUpperCase()}`;
+}
+
+// ---------- shared round clock ----------
+
+// Fixed durations (user-confirmed): 10 min presentation, then 1 min to rate.
+export const ROUND_PRESENT_SECONDS = 600;
+export const ROUND_RATE_SECONDS = 60;
+
+export interface RoundPhaseSnapshot {
+  phase: RoundPhase;
+  /** Server wall-clock ms at which the current timed phase ends (0 when untimed). */
+  phaseEndsAtMs: number;
+  remainingSeconds: number;
+}
+
+// Derives the effective phase from the stored clock row and the current time.
+// Pass a server-anchored now (Date.now() + measured offset); the database
+// enforces the window, this only drives the UI.
+export function computeRoundPhase(
+  round: RoundState | null,
+  nowMs: number,
+): RoundPhaseSnapshot {
+  if (!round || round.status === 'idle') {
+    return { phase: 'idle', phaseEndsAtMs: 0, remainingSeconds: 0 };
+  }
+  if (round.status === 'selecting') {
+    return { phase: 'selecting', phaseEndsAtMs: 0, remainingSeconds: 0 };
+  }
+  if (round.presentEndsAtMs > 0 && nowMs < round.presentEndsAtMs) {
+    return {
+      phase: 'presenting',
+      phaseEndsAtMs: round.presentEndsAtMs,
+      remainingSeconds: Math.ceil((round.presentEndsAtMs - nowMs) / 1000),
+    };
+  }
+  if (round.rateEndsAtMs > 0 && nowMs <= round.rateEndsAtMs) {
+    return {
+      phase: 'rating',
+      phaseEndsAtMs: round.rateEndsAtMs,
+      remainingSeconds: Math.ceil((round.rateEndsAtMs - nowMs) / 1000),
+    };
+  }
+  return { phase: 'closed', phaseEndsAtMs: 0, remainingSeconds: 0 };
 }
