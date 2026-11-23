@@ -760,8 +760,12 @@ begin
   return v_round;
 end $$;
 
--- submit_score: NEW scores now also require the shared rating window and the
--- judge's own pick for the round. Edits keep following editing_allowed.
+-- Judging is not gated by the round clock (restored Nov 23, 2026; see
+-- supabase/migrations/2026-11-23_restore_unrestricted_judging.sql).
+-- submit_score and evaluations_self_insert check only: signed in, submissions
+-- open, judge active, and editing_allowed for edits. The round_state clock and
+-- admin round RPCs remain for admin/projector use; rating_window_open() is
+-- kept but unused by judge writes.
 create or replace function public.submit_score(
   p_judge_id text, p_team_id text, p_criteria jsonb, p_comment text
 ) returns void
@@ -769,7 +773,6 @@ language plpgsql security definer set search_path = public as $$
 declare
   v_eval_id text := p_judge_id || '_' || p_team_id;
   v_total int;
-  v_round public.round_state;
 begin
   if auth.uid() is null then raise exception 'not signed in'; end if;
   if not (select submissions_open()) then raise exception 'submissions closed'; end if;
@@ -784,35 +787,16 @@ begin
       comment = left(coalesce(p_comment,''), 1000), updated_at = now()
     where id = v_eval_id and judge_uid = auth.uid();
   else
-    select * into v_round from round_state where id;
-    if v_round.status <> 'live'
-       or v_round.present_ends_at is null
-       or now() < v_round.present_ends_at then
-      raise exception 'rating window not open';
-    end if;
-    if now() > v_round.rate_ends_at + interval '10 seconds' then
-      raise exception 'rating window closed';
-    end if;
-    if not exists (
-      select 1 from judge_team_selections
-      where round_number = v_round.round_number
-        and judge_id = p_judge_id
-        and team_id = p_team_id
-    ) then
-      raise exception 'team not selected this round';
-    end if;
     insert into evaluations (id, judge_id, judge_uid, team_id, score_version, criteria, total, comment)
     values (v_eval_id, p_judge_id, auth.uid(), p_team_id, 2, p_criteria, v_total, left(coalesce(p_comment,''),1000));
     update teams set submitted_count = submitted_count + 1, updated_at = now() where id = p_team_id;
   end if;
 end $$;
 
--- Direct-write parity: the insert policy checks the same window + pick.
 drop policy if exists evaluations_self_insert on public.evaluations;
 create policy evaluations_self_insert on public.evaluations for insert with check (
   judge_uid = auth.uid()
   and public.submissions_open()
-  and public.rating_window_open(judge_id, team_id)
   and exists (select 1 from public.judges j where j.id = judge_id and j.uid = auth.uid() and j.active)
 );
 
