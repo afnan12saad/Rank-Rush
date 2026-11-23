@@ -33,7 +33,7 @@ export function RoundTimerBanner({
   if (snap.phase === 'idle' || !round || round.roundNumber === 0) return null;
 
   const countdown = formatCountdown(snap.remainingSeconds);
-  const roundLabel = `Round ${round.roundNumber}`;
+  const roundLabel = round.roundName || `Round ${round.roundNumber}`;
 
   if (variant === 'compact') {
     const compactLabel =
