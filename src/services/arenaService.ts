@@ -16,7 +16,9 @@ import type {
   PresentationStatus,
   PublicSummary,
   PublishedLeaderboard,
+  RoundState,
   Team,
+  TeamSelection,
 } from '../types/arena';
 import {
   CRITERIA,
@@ -607,6 +609,147 @@ export async function submitCriteriaScores(params: {
   if (error) throw new Error(error.message);
 }
 
+
+// ---------- shared round clock ----------
+
+export const DEFAULT_ROUND_STATE: Omit<RoundState, 'updatedAt'> = {
+  roundNumber: 0,
+  status: 'idle',
+  presentSeconds: 600,
+  rateSeconds: 60,
+  presentEndsAtMs: 0,
+  rateEndsAtMs: 0,
+};
+
+function mapRoundState(r: any): RoundState {
+  return {
+    roundNumber: r.round_number,
+    status: r.status,
+    presentSeconds: r.present_seconds,
+    rateSeconds: r.rate_seconds,
+    presentEndsAtMs: r.present_ends_at
+      ? new Date(r.present_ends_at).getTime()
+      : 0,
+    rateEndsAtMs: r.rate_ends_at ? new Date(r.rate_ends_at).getTime() : 0,
+    updatedAt: r.updated_at,
+  };
+}
+
+function mapTeamSelection(r: any): TeamSelection {
+  return {
+    roundNumber: r.round_number,
+    judgeId: r.judge_id,
+    judgeUid: r.judge_uid,
+    teamId: r.team_id,
+    selectedAt: r.selected_at,
+  };
+}
+
+// Round clock subscription. Also reports the measured server clock offset
+// (server updated_at minus local receive time) so countdowns can anchor to
+// the database clock instead of the device's.
+export function subscribeRoundState(
+  onData: (round: RoundState, serverOffsetMs: number) => void,
+): Unsubscribe {
+  return subscribeTable(
+    'round_state',
+    ['round_state'],
+    async () => {
+      const { data, error } = await supabase
+        .from('round_state')
+        .select('*')
+        .eq('id', true)
+        .maybeSingle();
+      if (error) throw error;
+      return {
+        round: data ? mapRoundState(data) : { ...DEFAULT_ROUND_STATE },
+        serverOffsetMs: data?.updated_at
+          ? new Date(data.updated_at).getTime() - Date.now()
+          : 0,
+      };
+    },
+    (v) => onData(v.round, v.serverOffsetMs),
+  );
+}
+
+export function subscribeMyTeamSelection(
+  judgeUid: string,
+  roundNumber: number,
+  onData: (selection: TeamSelection | null) => void,
+): Unsubscribe {
+  return subscribeTable(
+    `my_selection_${judgeUid}_${roundNumber}`,
+    ['judge_team_selections'],
+    async () => {
+      const { data, error } = await supabase
+        .from('judge_team_selections')
+        .select('*')
+        .eq('judge_uid', judgeUid)
+        .eq('round_number', roundNumber)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapTeamSelection(data) : null;
+    },
+    onData,
+  );
+}
+
+// Admin: every judge's pick for one round (drives the round overview).
+export function subscribeRoundSelections(
+  roundNumber: number,
+  onData: (selections: TeamSelection[]) => void,
+): Unsubscribe {
+  return subscribeTable(
+    `round_selections_${roundNumber}`,
+    ['judge_team_selections'],
+    async () => {
+      const { data, error } = await supabase
+        .from('judge_team_selections')
+        .select('*')
+        .eq('round_number', roundNumber);
+      if (error) throw error;
+      return (data ?? []).map(mapTeamSelection);
+    },
+    onData,
+  );
+}
+
+export async function selectTeamForRound(
+  judgeId: string,
+  teamId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('select_team_for_round', {
+    p_judge_id: judgeId,
+    p_team_id: teamId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+async function roundAdminRpc(name: string, params?: Record<string, unknown>) {
+  const { error } = await supabase.rpc(name, params ?? {});
+  if (error) throw new Error(error.message);
+}
+
+export function startRoundSelection(): Promise<void> {
+  return roundAdminRpc('start_round_selection');
+}
+
+export function startRoundClock(): Promise<void> {
+  return roundAdminRpc('start_round_clock');
+}
+
+export function extendRoundClock(seconds: number): Promise<void> {
+  return roundAdminRpc('extend_round_clock', { p_seconds: seconds });
+}
+
+export function reopenRatingWindow(): Promise<void> {
+  return roundAdminRpc('reopen_rating_window');
+}
+
+export function endRound(): Promise<void> {
+  return roundAdminRpc('end_round');
+}
+
 // ---------- published leaderboard ----------
 
 export function subscribePublishedLeaderboard(
@@ -892,4 +1035,4 @@ export async function initializeEverythingToZeroWith15Teams(
     settings ?? { ...DEFAULT_EVENT_SETTINGS },
     meta?.requestedBy ?? 'admin',
   );
-}
+    }
