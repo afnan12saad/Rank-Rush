@@ -12,13 +12,15 @@ import {
 import { BrandMark } from '../components/BrandMark';
 import { LiveTimerDisplay } from '../components/LiveTimerDisplay';
 import { PodiumShowcase } from '../components/PodiumShowcase';
+import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { useArenaAuth } from '../context/ArenaAuthContext';
 import {
   DEFAULT_EVENT_SETTINGS,
   subscribeAllEvaluations,
   subscribeAllJudges,
+  subscribeRoundState,
 } from '../services/arenaService';
-import type { Evaluation, Judge } from '../types/arena';
+import type { Evaluation, Judge, RoundState } from '../types/arena';
 import { calculateLeaderboard } from '../utils/scoring';
 
 export function ProjectorPage() {
@@ -27,6 +29,15 @@ export function ProjectorPage() {
   const [adminJudges, setAdminJudges] = useState<Judge[]>([]);
   const [adminEvaluations, setAdminEvaluations] = useState<Evaluation[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [round, setRound] = useState<RoundState | null>(null);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+
+  useEffect(() => {
+    return subscribeRoundState((r, offset) => {
+      setRound(r);
+      setServerOffsetMs(offset);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -148,12 +159,17 @@ export function ProjectorPage() {
         {/* Centered Whole-Event Countdown Header Card */}
         <section
           aria-label="Whole Event Countdown Timer"
-          className="flex flex-col items-center justify-center py-1"
+          className="flex flex-col items-center justify-center gap-4 py-1"
         >
           <LiveTimerDisplay
             settings={settings}
             variant="split"
             eventName={eventName}
+          />
+          <RoundTimerBanner
+            round={round}
+            serverOffsetMs={serverOffsetMs}
+            variant="projector"
           />
         </section>
 
@@ -229,4 +245,4 @@ export function ProjectorPage() {
       </main>
     </div>
   );
-}
+            }
