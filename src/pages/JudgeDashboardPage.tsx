@@ -5,15 +5,23 @@ import {
   CheckCircle2,
   LogOut,
   Search,
+  ShieldAlert,
   Star,
   Users,
 } from 'lucide-react';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
 import { LiveTimerDisplay } from '../components/LiveTimerDisplay';
+import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { useArenaAuth } from '../context/ArenaAuthContext';
-import { subscribeMyEvaluations } from '../services/arenaService';
-import type { Evaluation } from '../types/arena';
+import {
+  selectTeamForRound,
+  subscribeMyEvaluations,
+  subscribeMyTeamSelection,
+  subscribeRoundState,
+} from '../services/arenaService';
+import type { Evaluation, RoundState, TeamSelection } from '../types/arena';
+import { computeRoundPhase } from '../utils/scoring';
 
 type FilterMode = 'all' | 'pending' | 'submitted';
 
@@ -31,6 +39,48 @@ export function JudgeDashboardPage() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [round, setRound] = useState<RoundState | null>(null);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [mySelection, setMySelection] = useState<TeamSelection | null>(null);
+  const [selectingTeamId, setSelectingTeamId] = useState('');
+  const [selectError, setSelectError] = useState('');
+
+  useEffect(() => {
+    return subscribeRoundState((r, offset) => {
+      setRound(r);
+      setServerOffsetMs(offset);
+    });
+  }, []);
+
+  const roundNumber = round?.roundNumber ?? 0;
+  useEffect(() => {
+    if (!user || !judgeProfile || roundNumber === 0) {
+      setMySelection(null);
+      return;
+    }
+    return subscribeMyTeamSelection(user.uid, roundNumber, setMySelection);
+  }, [user, judgeProfile, roundNumber]);
+
+  const roundPhase = computeRoundPhase(
+    round,
+    Date.now() + serverOffsetMs,
+  ).phase;
+
+  const handleSelectTeam = async (teamId: string) => {
+    if (!judgeProfile) return;
+    setSelectError('');
+    setSelectingTeamId(teamId);
+    try {
+      await selectTeamForRound(judgeProfile.id, teamId);
+      navigate(`/judge/evaluate/${teamId}`);
+    } catch (err) {
+      setSelectError(
+        err instanceof Error ? err.message : 'Could not select that team.',
+      );
+    } finally {
+      setSelectingTeamId('');
+    }
+  };
 
   useEffect(() => {
     if (authReady && (!user || !judgeProfile)) {
@@ -162,6 +212,25 @@ export function JudgeDashboardPage() {
           </div>
         </section>
 
+        {/* Shared Round Clock */}
+        <RoundTimerBanner round={round} serverOffsetMs={serverOffsetMs} />
+
+        {roundPhase === 'selecting' && !mySelection && (
+          <div className="rounded-xl border border-[#2563EB]/60 bg-[#0B1B2E] px-4 py-3 text-sm text-slate-100 flex items-center gap-2.5">
+            <Users className="w-4 h-4 text-[#2563EB] shrink-0" />
+            Pick the team you are judging in Round {roundNumber} below.
+          </div>
+        )}
+        {selectError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-500/60 bg-red-950/60 px-4 py-3 text-sm text-red-200 flex items-center gap-2.5"
+          >
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            <span>{selectError}</span>
+          </div>
+        )}
+
         {/* Search & Filter Toolbar */}
         <section className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
@@ -221,6 +290,7 @@ export function JudgeDashboardPage() {
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredTeams.map((team) => {
               const existingEval = evalByTeam.get(team.id);
+              const isMyPick = mySelection?.teamId === team.id;
 
               return (
                 <article
@@ -276,6 +346,11 @@ export function JudgeDashboardPage() {
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Submitted ({existingEval.total ?? `${existingEval.rating} (old 1-5 scale)`}{existingEval.total !== undefined ? '/25' : ''})
                         </span>
+                      ) : isMyPick ? (
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-[#F5B942]">
+                          <Star className="w-3.5 h-3.5" />
+                          Your Team for Round {roundNumber}
+                        </span>
                       ) : (
                         <span className="font-semibold text-slate-300">
                           Not Evaluated
@@ -283,23 +358,53 @@ export function JudgeDashboardPage() {
                       )}
                     </div>
 
-                    <Link
-                      to={`/judge/evaluate/${team.id}`}
-                      className={`w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                        existingEval
-                          ? settings?.editingAllowed
+                    {existingEval ? (
+                      <Link
+                        to={`/judge/evaluate/${team.id}`}
+                        className={`w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                          settings?.editingAllowed
                             ? 'bg-[#102640] border border-[#24436B] text-white hover:bg-[#173355]'
                             : 'bg-[#091829] text-slate-300 hover:bg-[#102640]'
-                          : 'bg-[#2563EB] text-white hover:bg-[#1d4ed8]'
-                      }`}
-                    >
-                      <Star className="w-4 h-4" />
-                      {existingEval
-                        ? settings?.editingAllowed
+                        }`}
+                      >
+                        <Star className="w-4 h-4" />
+                        {settings?.editingAllowed
                           ? 'Review or Update Rating'
-                          : 'View Submitted Rating'
-                        : 'Select Team'}
-                    </Link>
+                          : 'View Submitted Rating'}
+                      </Link>
+                    ) : isMyPick ? (
+                      <Link
+                        to={`/judge/evaluate/${team.id}`}
+                        className={`w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                          roundPhase === 'rating'
+                            ? 'bg-[#F5B942] text-[#092B59] hover:bg-[#e5a92e]'
+                            : 'bg-[#2563EB] text-white hover:bg-[#1d4ed8]'
+                        }`}
+                      >
+                        <Star className="w-4 h-4" />
+                        {roundPhase === 'rating'
+                          ? 'Rate This Team Now'
+                          : 'Open Evaluation'}
+                      </Link>
+                    ) : roundPhase === 'selecting' ? (
+                      <button
+                        type="button"
+                        disabled={selectingTeamId !== ''}
+                        onClick={() => void handleSelectTeam(team.id)}
+                        className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-[#2563EB] text-white hover:bg-[#1d4ed8] disabled:opacity-50"
+                      >
+                        <Star className="w-4 h-4" />
+                        {selectingTeamId === team.id
+                          ? 'Selecting...'
+                          : `Select for Round ${roundNumber}`}
+                      </button>
+                    ) : (
+                      <div className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-[#091829] text-slate-400 border border-[#1E3A5F]">
+                        {roundPhase === 'presenting' || roundPhase === 'rating'
+                          ? 'Round In Progress'
+                          : 'Wait for the Next Round'}
+                      </div>
+                    )}
                   </div>
                 </article>
               );
