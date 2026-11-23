@@ -32,6 +32,7 @@ import type {
 } from '../../types/arena';
 import { computeRoundPhase, formatCountdown } from '../../utils/scoring';
 import { RoundTimerBanner } from '../RoundTimerBanner';
+import { supabase } from '../../services/supabaseClient';
 
 interface AdminControlsPanelProps {
   settings: EventSettings;
@@ -65,6 +66,14 @@ export function AdminControlsPanel({
   const [roundOffsetMs, setRoundOffsetMs] = useState(0);
   const [roundSelections, setRoundSelections] = useState<TeamSelection[]>([]);
   const [roundBusy, setRoundBusy] = useState(false);
+  const [roundNameInput, setRoundNameInput] = useState('');
+  const [timerEditorOpen, setTimerEditorOpen] = useState(false);
+  const [presentInput, setPresentInput] = useState('600');
+  const [rateInput, setRateInput] = useState('60');
+  const [timeLeftInput, setTimeLeftInput] = useState('60');
+  const [editPhase, setEditPhase] = useState<'presenting' | 'rating' | null>(null);
+  const [editRound, setEditRound] = useState(0);
+  const [endAction, setEndAction] = useState<'presentation' | 'round' | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -80,6 +89,7 @@ export function AdminControlsPanel({
   }, []);
 
   const roundNumber = round?.roundNumber ?? 0;
+  const roundLabel = round?.roundName || `Round ${roundNumber}`;
   useEffect(() => {
     if (roundNumber === 0) {
       setRoundSelections([]);
@@ -104,11 +114,34 @@ export function AdminControlsPanel({
     try {
       await action();
       onNotify(successMsg);
+      setTimerEditorOpen(false);
+      setEndAction(null);
     } catch (err) {
       onNotify(err instanceof Error ? err.message : 'Round action failed.');
     } finally {
       setRoundBusy(false);
     }
+  };
+
+  const timerRpc = async (name: string, params: Record<string, unknown>) => {
+    const { error } = await supabase.rpc(name, params);
+    if (error) throw new Error(error.message);
+  };
+  const parseSeconds = (value: string, max: number) => {
+    const seconds = Number(value);
+    if (!value.trim() || !Number.isInteger(seconds) || seconds < 10 || seconds > max) {
+      throw new Error(`Enter a whole number from 10 to ${max} seconds.`);
+    }
+    return seconds;
+  };
+  const openTimerEditor = () => {
+    setRoundNameInput(round?.roundName ?? '');
+    setPresentInput(String(round?.presentSeconds ?? 600));
+    setRateInput(String(round?.rateSeconds ?? 60));
+    setTimeLeftInput(String(Math.max(10, roundSnap.remainingSeconds)));
+    setEditPhase(roundSnap.phase === 'presenting' || roundSnap.phase === 'rating' ? roundSnap.phase : null);
+    setEditRound(roundNumber);
+    setTimerEditorOpen(true);
   };
 
   const handleToggleSubmissions = async () => {
@@ -164,14 +197,14 @@ export function AdminControlsPanel({
               Presentation Rounds
             </h2>
             <p className="text-sm text-slate-400 mt-1">
-              Judges pick a team, you start one shared 10-minute clock, then a
-              shared 1-minute rating window opens. The same countdown shows on
+              Judges pick a team, you start one shared presentation clock, then a
+              shared rating window opens. Admins can edit durations or end early. The same countdown shows on
               the judge screens and the projector.
             </p>
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#091829] border border-[#24436B] text-xs font-semibold text-slate-200 shrink-0">
             <ListChecks className="w-3.5 h-3.5 text-[#F5B942]" />
-            {roundNumber === 0 ? 'No round started' : `Round ${roundNumber}`}
+            {roundNumber === 0 ? 'No round started' : roundLabel}
           </span>
         </div>
 
@@ -185,6 +218,16 @@ export function AdminControlsPanel({
         )}
 
         <div className="flex flex-wrap gap-3">
+          <button type="button" disabled={roundBusy || !round} onClick={openTimerEditor}
+            className="min-h-[44px] px-4 py-2.5 rounded-lg bg-[#102640] border border-[#24436B] text-white text-sm font-semibold disabled:opacity-50">
+            Edit Timer
+          </button>
+          {roundSnap.phase === 'presenting' && (
+            <button type="button" disabled={roundBusy} onClick={() => setEndAction('presentation')}
+              className="min-h-[44px] px-4 py-2.5 rounded-lg bg-[#F5B942] text-[#092B59] text-sm font-semibold disabled:opacity-50">
+              End Presentation &amp; Open Rating
+            </button>
+          )}
           {(roundSnap.phase === 'idle' ||
             roundSnap.phase === 'closed' ||
             roundNumber === 0) && (
@@ -211,13 +254,13 @@ export function AdminControlsPanel({
               onClick={() =>
                 void runRoundAction(
                   startRoundClock,
-                  `Started the Round ${roundNumber} clock: 10 min presentation, then 1 min rating.`,
+                  `Started Round ${roundNumber}: ${formatCountdown(round?.presentSeconds ?? 600)} presentation, then ${formatCountdown(round?.rateSeconds ?? 60)} rating.`,
                 )
               }
               className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#16A34A] hover:bg-[#15803d] text-white text-sm font-semibold transition-colors disabled:opacity-50"
             >
               <Play className="w-4 h-4" />
-              Start 10-Min Clock
+              Start {formatCountdown(round?.presentSeconds ?? 600)} Clock
             </button>
           )}
 
@@ -240,9 +283,7 @@ export function AdminControlsPanel({
               <button
                 type="button"
                 disabled={roundBusy}
-                onClick={() =>
-                  void runRoundAction(endRound, `Ended Round ${roundNumber}.`)
-                }
+                onClick={() => setEndAction('round')}
                 className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#091829] border border-red-500/50 hover:bg-red-950/50 text-red-200 text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 <Pause className="w-4 h-4" />
@@ -258,22 +299,77 @@ export function AdminControlsPanel({
               onClick={() =>
                 void runRoundAction(
                   reopenRatingWindow,
-                  `Reopened the 1-minute rating window for Round ${roundNumber}.`,
+                  `Reopened the rating window for Round ${roundNumber}.`,
                 )
               }
               className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#F5B942] hover:bg-[#e5a92e] text-[#092B59] text-sm font-semibold transition-colors disabled:opacity-50"
             >
               <Star className="w-4 h-4" />
-              Reopen 1-Min Rating Window
+              Reopen {formatCountdown(round?.rateSeconds ?? 60)} Rating Window
             </button>
           )}
         </div>
+
+        {timerEditorOpen && (
+          <div className="rounded-xl border border-[#24436B] bg-[#091829] p-4 space-y-5">
+            <form className="space-y-3" onSubmit={(event) => {
+              event.preventDefault();
+              void runRoundAction(() => timerRpc('name_round', { p_round_number: editRound, p_name: roundNameInput.trim() }), 'Round name saved on all screens.');
+            }}>
+              <label className="block text-sm text-slate-200">Round name
+                <input maxLength={80} value={roundNameInput} onChange={(e) => setRoundNameInput(e.target.value)} placeholder={`Round ${roundNumber}`}
+                  className="mt-1 block w-full rounded-lg border border-[#24436B] bg-[#0D1E33] px-3 py-2 text-white" />
+              </label>
+              <p className="text-xs text-slate-400">Shown on admin, judge and projector screens. Leave blank to use the round number. The name clears when the next round opens.</p>
+              <button disabled={roundBusy || roundNumber === 0} className="min-h-[44px] rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Save Round Name</button>
+            </form>
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              void runRoundAction(() => timerRpc('configure_round_clock', {
+                p_present_seconds: parseSeconds(presentInput, 7200),
+                p_rate_seconds: parseSeconds(rateInput, 3600),
+              }), 'Saved timer durations. The running countdown was not changed.');
+            }} className="space-y-3">
+              <h3 className="text-sm font-semibold text-white">Timer durations</h3>
+              <p className="text-xs text-slate-400">Used when starting a clock, reopening rating, or ending a presentation early. Saving does not change the running countdown.</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <label className="text-sm text-slate-200">Presentation (seconds)
+                  <input type="number" min="10" max="7200" step="1" required value={presentInput} onChange={(e) => setPresentInput(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-[#24436B] bg-[#0D1E33] px-3 py-2 text-white" />
+                </label>
+                <label className="text-sm text-slate-200">Rating (seconds)
+                  <input type="number" min="10" max="3600" step="1" required value={rateInput} onChange={(e) => setRateInput(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-[#24436B] bg-[#0D1E33] px-3 py-2 text-white" />
+                </label>
+              </div>
+              <button disabled={roundBusy} className="min-h-[44px] rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Save Durations</button>
+            </form>
+            {editPhase && (
+              <form onSubmit={(event) => {
+                event.preventDefault();
+                void runRoundAction(() => timerRpc('edit_round_time_left', {
+                  p_round_number: editRound, p_phase: editPhase,
+                  p_seconds: parseSeconds(timeLeftInput, editPhase === 'presenting' ? 7200 : 3600),
+                }), 'Updated the shared countdown on all screens.');
+              }} className="border-t border-[#24436B] pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-white">Edit running {editPhase === 'presenting' ? 'presentation' : 'rating'} timer</h3>
+                <p className="text-xs text-slate-400">Sets time left from when you press Apply. Does not change saved durations. If the phase or round changes, reopen this editor.</p>
+                <label className="block text-sm text-slate-200">Time left (seconds)
+                  <input type="number" min="10" max={editPhase === 'presenting' ? 7200 : 3600} step="1" required value={timeLeftInput} onChange={(e) => setTimeLeftInput(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-[#24436B] bg-[#0D1E33] px-3 py-2 text-white" />
+                </label>
+                <button disabled={roundBusy} className="min-h-[44px] rounded-lg bg-[#F5B942] px-4 py-2 text-sm font-semibold text-[#092B59] disabled:opacity-50">Apply Time Left</button>
+              </form>
+            )}
+            <button type="button" disabled={roundBusy} onClick={() => setTimerEditorOpen(false)} className="min-h-[44px] px-3 text-sm text-slate-300">Close Editor</button>
+          </div>
+        )}
 
         {roundNumber > 0 && (
           <div className="border-t border-[#183152] pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white">
-                Round {roundNumber} Team Picks
+                {roundLabel} Team Picks
               </h3>
               <span className="text-xs font-mono-tabular text-slate-400">
                 {roundSelections.length} / {judges.filter((j) => j.active).length} judges picked
@@ -410,6 +506,22 @@ export function AdminControlsPanel({
       </section>
 
       <ConfirmDialog
+        open={endAction !== null}
+        title={endAction === 'presentation' ? 'End Presentation Early?' : 'End Round?'}
+        message={endAction === 'presentation'
+          ? `Stop the presentation timer and open a ${formatCountdown(round?.rateSeconds ?? 60)} rating window for all judges now. Scores and team picks are kept.`
+          : 'Stop the timer and close rating submissions for this round now. Existing scores and team picks are kept.'}
+        confirmLabel={endAction === 'presentation' ? 'End Presentation & Open Rating' : 'End Round'}
+        danger busy={roundBusy}
+        onCancel={() => { if (!roundBusy) setEndAction(null); }}
+        onConfirm={() => runRoundAction(
+          endAction === 'presentation'
+            ? () => timerRpc('end_round_presentation', { p_round_number: roundNumber })
+            : endRound,
+          endAction === 'presentation' ? 'Presentation ended. Rating window is open.' : `Ended Round ${roundNumber}.`,
+        )}
+      />
+      <ConfirmDialog
         open={resetConfirmOpen}
         title="Start New Event"
         message="First the final standings of this event are saved to the archive. Then all ratings and presentation progress are cleared, registered judges are removed, the timer is reset to 00:00:00, and 15 default teams (Team 01 to Team 15) are created. Administrator accounts are kept. If saving the archive fails, nothing is reset."
@@ -422,4 +534,4 @@ export function AdminControlsPanel({
       />
     </div>
   );
-}
+    }
