@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -13,13 +12,10 @@ import {
 import { BrandMark } from '../components/BrandMark';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
-import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { useArenaAuth } from '../context/ArenaAuthContext';
 import {
   DEFAULT_EVENT_SETTINGS,
-  subscribeRoundState,
 } from '../services/arenaService';
-import type { RoundState } from '../types/arena';
 
 export function HomePage() {
   const { settings, publicSummary, teams, dataReady, isAdmin, judgeProfile } =
@@ -31,16 +27,6 @@ export function HomePage() {
   const tagline = settings?.tagline || DEFAULT_EVENT_SETTINGS.tagline;
   const venue = settings?.venue || DEFAULT_EVENT_SETTINGS.venue;
   const eventDate = settings?.eventDate || DEFAULT_EVENT_SETTINGS.eventDate;
-
-  const [round, setRound] = useState<RoundState | null>(null);
-  const [roundOffsetMs, setRoundOffsetMs] = useState(0);
-
-  useEffect(() => {
-    return subscribeRoundState((r, offset) => {
-      setRound(r);
-      setRoundOffsetMs(offset);
-    });
-  }, []);
 
   const totalJudges = publicSummary?.totalJudges ?? 0;
   const totalTeams = teams.length;
@@ -137,17 +123,6 @@ export function HomePage() {
                   <MapPin className="w-4 h-4 text-[#F5B942] shrink-0" />
                   <span>{venue}</span>
                 </div>
-              </div>
-
-              <div className="pt-4 border-t border-[#183152] flex flex-wrap items-center justify-between gap-3">
-                <span className="text-xs font-semibold text-slate-400">
-                  Round Timer
-                </span>
-                <RoundTimerBanner
-                  round={round}
-                  serverOffsetMs={roundOffsetMs}
-                  variant="compact"
-                />
               </div>
 
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#183152]">
