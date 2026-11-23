@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
-import { LiveTimerDisplay } from '../components/LiveTimerDisplay';
+import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { PodiumShowcase } from '../components/PodiumShowcase';
 import { LegacyRatingsNotice } from '../components/admin/LegacyRatingsNotice';
 import { AdminTeamsPanel } from '../components/admin/AdminTeamsPanel';
@@ -27,12 +27,14 @@ import {
   subscribeAllAdmins,
   subscribeAllEvaluations,
   subscribeAllJudges,
+  subscribeRoundState,
 } from '../services/arenaService';
 import type {
   AdminUser,
   Evaluation,
   EventSettings,
   Judge,
+  RoundState,
 } from '../types/arena';
 import {
   calculateDashboardMetrics,
@@ -64,6 +66,8 @@ export function AdminDashboardPage() {
   const [judges, setJudges] = useState<Judge[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [toast, setToast] = useState('');
+  const [round, setRound] = useState<RoundState | null>(null);
+  const [roundOffsetMs, setRoundOffsetMs] = useState(0);
   const zeroInitAttempted = useRef(false);
   const pendingRequests = useMemo(
     () => adminRequests.filter((r) => r.status === 'pending'),
@@ -75,6 +79,13 @@ export function AdminDashboardPage() {
       navigate('/admin/login', { replace: true });
     }
   }, [authReady, isAdmin, navigate]);
+
+  useEffect(() => {
+    return subscribeRoundState((r, offset) => {
+      setRound(r);
+      setRoundOffsetMs(offset);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -156,7 +167,11 @@ export function AdminDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <LiveTimerDisplay settings={settings} variant="compact" />
+            <RoundTimerBanner
+              round={round}
+              serverOffsetMs={roundOffsetMs}
+              variant="compact"
+            />
             <Link
               to="/projector"
               target="_blank"
@@ -296,7 +311,7 @@ export function AdminDashboardPage() {
                   </div>
                 </div>
 
-                {/* Progress + Whole Event Timer & Result Release Status */}
+                {/* Progress + Round Timer & Result Release Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-[#0D1E33] border border-[#1E3A5F] rounded-xl p-6 space-y-3">
                     <div className="flex items-center justify-between">
@@ -323,7 +338,7 @@ export function AdminDashboardPage() {
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <div className="text-xs font-semibold text-slate-400">
-                          Whole Event Timer & Visibility
+                          Round Timer & Visibility
                         </div>
                         <div className="text-sm font-bold mt-0.5 text-[#F5B942]">
                           Leaderboard Admin-Only
@@ -332,13 +347,17 @@ export function AdminDashboardPage() {
                     </div>
 
                     <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#183152]">
-                      <LiveTimerDisplay settings={settings} variant="compact" />
+                      <RoundTimerBanner
+                        round={round}
+                        serverOffsetMs={roundOffsetMs}
+                        variant="compact"
+                      />
                       <button
                         type="button"
                         onClick={() => setActiveTab('controls')}
                         className="inline-flex items-center min-h-[44px] text-xs font-semibold text-[#F5B942] hover:underline whitespace-nowrap"
                       >
-                        Manage Event Timer
+                        Manage Round Timer
                       </button>
                     </div>
                   </div>
