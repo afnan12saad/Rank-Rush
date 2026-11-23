@@ -4,6 +4,7 @@ import {
   buildJudgePortalUrl,
   calculateDashboardMetrics,
   calculateLeaderboard,
+  computeRoundPhase,
   computeTimerSnapshot,
   formatCountdown,
   generateNextJudgeCode,
@@ -478,4 +479,52 @@ test('resolveAdminRequestView maps latest request row to UI state', () => {
   // approved means access comes from the admins table, not the request row
   assert.equal(resolveAdminRequestView({ status: 'approved' }), 'none');
   assert.equal(resolveAdminRequestView({ status: 'unexpected' }), 'none');
+});
+
+test('computeRoundPhase derives selecting/presenting/rating/closed from server timestamps', () => {
+  const base: import('../types/arena').RoundState = {
+    roundNumber: 2,
+    status: 'live',
+    presentSeconds: 600,
+    rateSeconds: 60,
+    presentEndsAtMs: 1_000_000 + 600_000,
+    rateEndsAtMs: 1_000_000 + 660_000,
+  };
+
+  // idle and null rounds never open a window
+  assert.equal(computeRoundPhase(null, 1_000_000).phase, 'idle');
+  assert.equal(
+    computeRoundPhase({ ...base, status: 'idle' }, 1_000_000).phase,
+    'idle',
+  );
+
+  // selection phase
+  assert.equal(
+    computeRoundPhase({ ...base, status: 'selecting' }, 1_000_000).phase,
+    'selecting',
+  );
+
+  // during the 10-minute presentation
+  const presenting = computeRoundPhase(base, 1_000_000 + 300_000);
+  assert.equal(presenting.phase, 'presenting');
+  assert.equal(presenting.remainingSeconds, 300);
+  assert.equal(presenting.phaseEndsAtMs, base.presentEndsAtMs);
+
+  // exactly at presentation end the rating window opens
+  const atOpen = computeRoundPhase(base, base.presentEndsAtMs);
+  assert.equal(atOpen.phase, 'rating');
+  assert.equal(atOpen.remainingSeconds, 60);
+
+  // last tick of the rating window still counts; one ms later it is closed
+  assert.equal(computeRoundPhase(base, base.rateEndsAtMs).phase, 'rating');
+  assert.equal(computeRoundPhase(base, base.rateEndsAtMs + 1).phase, 'closed');
+
+  // a live round without timestamps never opens (defensive)
+  assert.equal(
+    computeRoundPhase(
+      { ...base, presentEndsAtMs: 0, rateEndsAtMs: 0 },
+      1_000_000,
+    ).phase,
+    'closed',
+  );
 });
