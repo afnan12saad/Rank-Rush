@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Eye, Lock } from 'lucide-react';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
-import { LiveTimerDisplay } from '../components/LiveTimerDisplay';
+import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { PodiumShowcase } from '../components/PodiumShowcase';
 import { useArenaAuth } from '../context/ArenaAuthContext';
 import {
@@ -11,8 +11,14 @@ import {
   subscribeAllEvaluations,
   subscribeAllJudges,
   subscribePublishedLeaderboard,
+  subscribeRoundState,
 } from '../services/arenaService';
-import type { Evaluation, Judge, PublishedLeaderboard } from '../types/arena';
+import type {
+  Evaluation,
+  Judge,
+  PublishedLeaderboard,
+  RoundState,
+} from '../types/arena';
 import { calculateLeaderboard } from '../utils/scoring';
 
 export function FinalResultsPage() {
@@ -22,6 +28,15 @@ export function FinalResultsPage() {
   const [adminEvaluations, setAdminEvaluations] = useState<Evaluation[]>([]);
   const [publishedBoard, setPublishedBoard] =
     useState<PublishedLeaderboard | null>(null);
+  const [round, setRound] = useState<RoundState | null>(null);
+  const [roundOffsetMs, setRoundOffsetMs] = useState(0);
+
+  useEffect(() => {
+    return subscribeRoundState((r, offset) => {
+      setRound(r);
+      setRoundOffsetMs(offset);
+    });
+  }, []);
 
   // Once the admin releases results, the published standings become readable
   // by everyone; until then this page stays locked for non-admins.
@@ -86,12 +101,12 @@ export function FinalResultsPage() {
           <p className="text-sm text-slate-400">{collegeName}</p>
         </div>
 
-        {/* Whole Event Countdown Card */}
+        {/* Round Countdown Card */}
         <div className="flex justify-center">
-          <LiveTimerDisplay
-            settings={settings}
-            variant="split"
-            eventName={eventName}
+          <RoundTimerBanner
+            round={round}
+            serverOffsetMs={roundOffsetMs}
+            variant="projector"
           />
         </div>
 
