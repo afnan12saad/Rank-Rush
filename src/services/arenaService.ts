@@ -164,6 +164,10 @@ function mapLeaderboard(r: any): PublishedLeaderboard {
 // RLS applies to every fetch, so a revoked permission degrades to empty data
 // instead of a crash (matches the old onSnapshot error handling).
 
+// Supabase reuses channels by topic. Each subscription owns a unique topic,
+// including while an earlier instance is still asynchronously unsubscribing.
+let subscriptionSequence = 0;
+
 function subscribeTable<T>(
   channelName: string,
   tables: string[],
@@ -172,6 +176,7 @@ function subscribeTable<T>(
 ): Unsubscribe {
   let disposed = false;
   const run = async () => {
+    if (disposed) return;
     try {
       const data = await fetcher();
       if (!disposed) onData(data);
@@ -180,16 +185,23 @@ function subscribeTable<T>(
     }
   };
   void run();
-  let channel: RealtimeChannel = supabase.channel(channelName);
+  const channel: RealtimeChannel = supabase.channel(
+    `${channelName}:${++subscriptionSequence}`,
+  );
   for (const table of tables) {
-    channel = channel.on(
+    channel.on(
       'postgres_changes',
       { event: '*', schema: 'public', table },
       () => void run(),
     );
   }
-  channel.subscribe();
+  // Register every callback before subscribing. Refresh on join to cover any
+  // changes between the initial fetch and the realtime connection becoming ready.
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') void run();
+  });
   return () => {
+    if (disposed) return;
     disposed = true;
     void supabase.removeChannel(channel);
   };
