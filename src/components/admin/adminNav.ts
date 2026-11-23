@@ -25,7 +25,7 @@ export const ADMIN_NAV_TABS: { key: AdminTab; label: string; icon: LucideIcon }[
     { key: 'overview', label: 'Overview & Leaderboard', icon: LayoutDashboard },
     { key: 'teams', label: 'Teams', icon: Users },
     { key: 'judges', label: 'Judges', icon: UserCheck },
-    { key: 'controls', label: 'Event Timer & Controls', icon: Sliders },
+    { key: 'controls', label: 'Round Timer & Controls', icon: Sliders },
     { key: 'qr', label: 'QR Code', icon: QrCode },
     { key: 'results', label: 'Results & Exports', icon: Award },
     { key: 'archives', label: 'Archived Events', icon: Archive },
