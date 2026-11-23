@@ -10,25 +10,19 @@ import {
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
 import { CriteriaScoreInput } from '../components/CriteriaScoreInput';
-import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { useArenaAuth } from '../context/ArenaAuthContext';
 import {
   submitCriteriaScores,
   subscribeMyEvaluations,
-  subscribeMyTeamSelection,
-  subscribeRoundState,
 } from '../services/arenaService';
 import type {
   CriteriaScores,
   Evaluation,
-  RoundState,
-  TeamSelection,
 } from '../types/arena';
 import {
   MAX_CRITERION_SCORE,
   MAX_TOTAL_SCORE,
   MIN_CRITERION_SCORE,
-  computeRoundPhase,
   isScoredEvaluation,
   isValidCriteriaScores,
   sumCriteria,
@@ -46,31 +40,6 @@ export function JudgeEvaluatePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
-  const [round, setRound] = useState<RoundState | null>(null);
-  const [serverOffsetMs, setServerOffsetMs] = useState(0);
-  const [mySelection, setMySelection] = useState<TeamSelection | null>(null);
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    return subscribeRoundState((r, offset) => {
-      setRound(r);
-      setServerOffsetMs(offset);
-    });
-  }, []);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), 500);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const roundNumber = round?.roundNumber ?? 0;
-  useEffect(() => {
-    if (!user || !judgeProfile || roundNumber === 0) {
-      setMySelection(null);
-      return;
-    }
-    return subscribeMyTeamSelection(user.uid, roundNumber, setMySelection);
-  }, [user, judgeProfile, roundNumber]);
 
   useEffect(() => {
     if (authReady && (!user || !judgeProfile)) {
@@ -139,15 +108,7 @@ export function JudgeEvaluatePage() {
   const isLockedExisting = Boolean(existingEval) && !settings?.editingAllowed;
   const submissionsClosed = settings?.submissionsOpen === false;
 
-  // Shared round clock: a NEW score is only possible during the shared
-  // 1-minute rating window, and only for the team this judge picked.
-  const roundSnap = computeRoundPhase(round, nowMs + serverOffsetMs);
-  const isMyPickedTeam = mySelection?.teamId === team.id;
-  const ratingOpenForThisTeam =
-    roundSnap.phase === 'rating' && isMyPickedTeam;
-  const newScoreBlocked = !existingEval && !ratingOpenForThisTeam;
-  const readOnly =
-    isLockedExisting || submissionsClosed || submittedSuccess || newScoreBlocked;
+  const readOnly = isLockedExisting || submissionsClosed || submittedSuccess;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -167,16 +128,6 @@ export function JudgeEvaluatePage() {
     if (isLegacyExisting) {
       setError(
         'This team already has an old single-score rating that an admin must clear before it can be re-scored.',
-      );
-      return;
-    }
-    if (newScoreBlocked) {
-      setError(
-        roundSnap.phase === 'rating' && !isMyPickedTeam
-          ? 'This is not the team you selected for this round.'
-          : roundSnap.phase === 'closed' || roundSnap.phase === 'idle'
-            ? 'The rating window for this round is closed.'
-            : 'The rating window has not opened yet. Wait for the countdown.',
       );
       return;
     }
@@ -244,41 +195,6 @@ export function JudgeEvaluatePage() {
               </p>
             )}
           </div>
-
-          {!existingEval && (
-            <RoundTimerBanner round={round} serverOffsetMs={serverOffsetMs} />
-          )}
-
-          {!existingEval && !submittedSuccess && (
-            <>
-              {roundSnap.phase === 'selecting' && (
-                <div className="p-4 rounded-lg bg-[#081422] border border-[#1E3A5F] text-sm text-slate-200">
-                  {isMyPickedTeam
-                    ? 'Team selected. The admin starts the shared 10-minute presentation timer next; the 1-minute rating window opens right after it.'
-                    : 'You have not picked a team for this round yet. Go back and select one while selection is open.'}
-                </div>
-              )}
-              {roundSnap.phase === 'presenting' && isMyPickedTeam && (
-                <div className="p-4 rounded-lg bg-[#081422] border border-[#1E3A5F] text-sm text-slate-200">
-                  Presentation in progress. The rating form unlocks for 1 minute
-                  when the countdown ends.
-                </div>
-              )}
-              {roundSnap.phase === 'rating' && !isMyPickedTeam && (
-                <div className="p-4 rounded-lg bg-amber-950/60 text-amber-200 text-sm">
-                  This is not the team you selected for this round, so you
-                  cannot rate it.
-                </div>
-              )}
-              {(roundSnap.phase === 'closed' || roundSnap.phase === 'idle') && (
-                <div className="p-4 rounded-lg bg-amber-950/60 text-amber-200 text-sm">
-                  The rating window for this round is closed. An administrator
-                  can reopen it from the Event Controls panel if the event ran
-                  over time.
-                </div>
-              )}
-            </>
-          )}
 
           {submittedSuccess && (
             <div
