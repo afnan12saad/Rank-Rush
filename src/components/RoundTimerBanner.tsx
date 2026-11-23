@@ -68,9 +68,9 @@ export function RoundTimerBanner({
   if (variant === 'projector') {
     const colorClass =
       snap.phase === 'rating'
-        ? 'bg-[#F5B942] text-[#092B59] border-[#F5B942]'
+        ? 'bg-[#F5B942] text-[#092B59] border-[#F5B942] shadow-[0_0_40px_rgba(245,185,66,0.28)]'
         : snap.phase === 'presenting'
-          ? 'bg-[#0F233A] text-white border-[#1E3A5F]'
+          ? 'bg-[#0B1B2E] text-white border-[#F5B942] shadow-[0_0_48px_rgba(245,185,66,0.22)]'
           : 'bg-[#0F233A] text-slate-200 border-[#1E3A5F]';
     const label =
       snap.phase === 'presenting'
@@ -84,16 +84,16 @@ export function RoundTimerBanner({
       <div
         role="status"
         aria-live="polite"
-        className={`inline-flex items-center gap-4 px-5 py-3.5 rounded-xl border transition-colors ${colorClass}`}
+        className={`w-full max-w-5xl flex items-center justify-center gap-6 sm:gap-10 px-6 sm:px-12 py-7 sm:py-10 rounded-2xl border-2 transition-colors ${colorClass}`}
       >
         {snap.phase === 'rating' ? (
-          <Star className="w-6 h-6 shrink-0" />
+          <Star className="w-10 h-10 sm:w-14 sm:h-14 shrink-0" />
         ) : (
-          <Clock className="w-6 h-6 shrink-0" />
+          <Clock className="w-10 h-10 sm:w-14 sm:h-14 shrink-0" />
         )}
-        <div>
-          <div className="text-xs font-semibold opacity-85">{label}</div>
-          <div className="font-mono-tabular text-3xl sm:text-4xl font-bold leading-none mt-1">
+        <div className="text-center">
+          <div className="text-lg sm:text-2xl font-bold opacity-90">{label}</div>
+          <div className="font-mono-tabular text-6xl sm:text-8xl md:text-9xl font-bold leading-none mt-3 tracking-wide">
             {snap.phase === 'presenting' || snap.phase === 'rating'
               ? countdown
               : snap.phase === 'selecting'
