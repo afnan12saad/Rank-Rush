@@ -221,7 +221,7 @@ export function JudgeDashboardPage() {
         {roundPhase === 'selecting' && !mySelection && (
           <div className="rounded-xl border border-[#2563EB]/60 bg-[#0B1B2E] px-4 py-3 text-sm text-slate-100 flex items-center gap-2.5">
             <Users className="w-4 h-4 text-[#2563EB] shrink-0" />
-            Pick the team you are judging in Round {roundNumber} below.
+            Pick the team you are judging in {round?.roundName || `Round ${roundNumber}`} below.
           </div>
         )}
         {selectError && (
@@ -352,7 +352,7 @@ export function JudgeDashboardPage() {
                       ) : isMyPick ? (
                         <span className="inline-flex items-center gap-1.5 font-semibold text-[#F5B942]">
                           <Star className="w-3.5 h-3.5" />
-                          Your Team for Round {roundNumber}
+                          Your Team for {round?.roundName || `Round ${roundNumber}`}
                         </span>
                       ) : (
                         <span className="font-semibold text-slate-300">
@@ -399,7 +399,7 @@ export function JudgeDashboardPage() {
                         <Star className="w-4 h-4" />
                         {selectingTeamId === team.id
                           ? 'Selecting...'
-                          : `Select for Round ${roundNumber}`}
+                          : `Select for ${round?.roundName || `Round ${roundNumber}`}`}
                       </button>
                     ) : (
                       <div className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-[#091829] text-slate-400 border border-[#1E3A5F]">
@@ -419,4 +419,4 @@ export function JudgeDashboardPage() {
       <SiteFooter />
     </div>
   );
-}
+    }
