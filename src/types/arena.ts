@@ -141,3 +141,30 @@ export interface AdminRequest {
   approvedAt?: unknown;
   approvedBy?: string;
 }
+
+// ---------- shared round clock ----------
+
+/** Stored clock state. 'live' means the 10-min presentation countdown has started. */
+export type RoundStatus = 'idle' | 'selecting' | 'live';
+/** Effective phase, derived from RoundState + the current (server) time. */
+export type RoundPhase = 'idle' | 'selecting' | 'presenting' | 'rating' | 'closed';
+
+export interface RoundState {
+  roundNumber: number;
+  status: RoundStatus;
+  presentSeconds: number;
+  rateSeconds: number;
+  /** Server wall-clock in ms; 0 when the clock has not been started. */
+  presentEndsAtMs: number;
+  /** Server wall-clock in ms; 0 when the clock has not been started. */
+  rateEndsAtMs: number;
+  updatedAt?: unknown;
+}
+
+export interface TeamSelection {
+  roundNumber: number;
+  judgeId: string;
+  judgeUid: string;
+  teamId: string;
+  selectedAt?: unknown;
+}
