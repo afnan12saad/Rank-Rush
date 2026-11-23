@@ -35,6 +35,36 @@ export function RoundTimerBanner({
   const countdown = formatCountdown(snap.remainingSeconds);
   const roundLabel = `Round ${round.roundNumber}`;
 
+  if (variant === 'compact') {
+    const compactLabel =
+      snap.phase === 'presenting'
+        ? `${roundLabel} Presenting`
+        : snap.phase === 'rating'
+          ? `${roundLabel} Rate Now`
+          : snap.phase === 'selecting'
+            ? `${roundLabel} Selecting`
+            : `${roundLabel} Closed`;
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-lg border text-sm font-medium ${
+          snap.phase === 'rating'
+            ? 'bg-amber-950/50 text-[#F5B942] border-[#F5B942]/50'
+            : 'bg-[#0B1B2E] text-white border-[#1E3A5F]'
+        }`}
+      >
+        <Clock className="w-4 h-4 text-[#F5B942] shrink-0" />
+        {(snap.phase === 'presenting' || snap.phase === 'rating') && (
+          <span className="font-mono-tabular font-bold text-base">
+            {countdown}
+          </span>
+        )}
+        <span className="text-xs text-slate-400">{compactLabel}</span>
+      </div>
+    );
+  }
+
   if (variant === 'projector') {
     const colorClass =
       snap.phase === 'rating'
