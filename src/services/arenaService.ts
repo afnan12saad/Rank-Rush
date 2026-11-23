@@ -635,6 +635,7 @@ export const DEFAULT_ROUND_STATE: Omit<RoundState, 'updatedAt'> = {
 
 function mapRoundState(r: any): RoundState {
   return {
+    roundName: r.round_name ?? '',
     roundNumber: r.round_number,
     status: r.status,
     presentSeconds: r.present_seconds,
@@ -1047,4 +1048,4 @@ export async function initializeEverythingToZeroWith15Teams(
     settings ?? { ...DEFAULT_EVENT_SETTINGS },
     meta?.requestedBy ?? 'admin',
   );
-    }
+  }
