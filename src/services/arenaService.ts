@@ -167,6 +167,13 @@ function mapLeaderboard(r: any): PublishedLeaderboard {
 // Supabase reuses channels by topic. Each subscription owns a unique topic,
 // including while an earlier instance is still asynchronously unsubscribing.
 let subscriptionSequence = 0;
+const REFETCH_COALESCE_MS = 250;
+const refreshers = new Map<string, Set<() => Promise<void>>>();
+
+/** Refetch subscribed tables right now, without waiting for the realtime echo. Call after this client's own writes. */
+export function refreshTablesNow(...tables: string[]): void {
+  for (const t of tables) for (const run of refreshers.get(t) ?? []) void run();
+}
 
 function subscribeTable<T>(
   channelName: string,
@@ -175,15 +182,48 @@ function subscribeTable<T>(
   onData: (data: T) => void,
 ): Unsubscribe {
   let disposed = false;
+  let inFlight = false;
+  let dirty = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
   const run = async () => {
     if (disposed) return;
+    if (inFlight) {
+      dirty = true;
+      return;
+    }
+    inFlight = true;
+    lastRunAt = Date.now();
     try {
       const data = await fetcher();
       if (!disposed) onData(data);
     } catch (err) {
       console.error(`[rank-rush] subscription fetch failed for ${channelName}`, err);
+    } finally {
+      inFlight = false;
+      if (dirty && !disposed) {
+        dirty = false;
+        schedule();
+      }
     }
   };
+  // Bursts of row changes (many judges submitting at once) collapse into one
+  // refetch per window instead of one per row.
+  // Leading edge: the first change after a quiet period refetches at once;
+  // changes inside the window collapse into one trailing refetch.
+  let lastRunAt = 0;
+  const schedule = () => {
+    if (timer || disposed) return;
+    const wait = Math.max(0, REFETCH_COALESCE_MS - (Date.now() - lastRunAt));
+    timer = setTimeout(() => {
+      timer = null;
+      void run();
+    }, wait);
+  };
+  for (const table of tables) {
+    let set = refreshers.get(table);
+    if (!set) refreshers.set(table, (set = new Set()));
+    set.add(run);
+  }
   void run();
   const channel: RealtimeChannel = supabase.channel(
     `${channelName}:${++subscriptionSequence}`,
@@ -192,7 +232,7 @@ function subscribeTable<T>(
     channel.on(
       'postgres_changes',
       { event: '*', schema: 'public', table },
-      () => void run(),
+      () => schedule(),
     );
   }
   // Register every callback before subscribing. Refresh on join to cover any
@@ -203,6 +243,8 @@ function subscribeTable<T>(
   return () => {
     if (disposed) return;
     disposed = true;
+    if (timer) clearTimeout(timer);
+    for (const table of tables) refreshers.get(table)?.delete(run);
     void supabase.removeChannel(channel);
   };
 }
@@ -415,17 +457,27 @@ export async function saveTeamRecord(params: {
   tieBreakerRank?: number;
 }): Promise<string> {
   const id = params.existingTeam?.id ?? params.id ?? slugifyTeamId(params.name);
-  const { data: existing } = await supabase
-    .from('teams')
-    .select('order_index, tie_breaker_rank')
-    .eq('id', id)
-    .maybeSingle();
-  const { data: maxRow } = await supabase
-    .from('teams')
-    .select('order_index')
-    .order('order_index', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Editing a known team with explicit ordering needs no lookups: skip the two
+  // extra round trips before the write.
+  const needLookup =
+    !params.existingTeam ||
+    params.orderIndex === undefined ||
+    params.tieBreakerRank === undefined;
+  const [{ data: existing }, { data: maxRow }] = needLookup
+    ? await Promise.all([
+        supabase
+          .from('teams')
+          .select('order_index, tie_breaker_rank')
+          .eq('id', id)
+          .maybeSingle(),
+        supabase
+          .from('teams')
+          .select('order_index')
+          .order('order_index', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }];
   const nextOrder = params.orderIndex ?? existing?.order_index ?? ((maxRow?.order_index ?? 0) + 1);
   const { error } = await supabase.from('teams').upsert({
     id,
@@ -439,6 +491,7 @@ export async function saveTeamRecord(params: {
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;
+  refreshTablesNow('teams');
   return id;
 }
 
@@ -449,6 +502,7 @@ export async function deleteTeamAndEvaluations(
   // evaluations reference teams with ON DELETE CASCADE.
   const { error } = await supabase.from('teams').delete().eq('id', teamId);
   if (error) throw error;
+  refreshTablesNow('teams', 'evaluations');
 }
 
 // ---------- judges ----------
@@ -741,6 +795,7 @@ export async function selectTeamForRound(
 async function roundAdminRpc(name: string, params?: Record<string, unknown>) {
   const { error } = await supabase.rpc(name, params ?? {});
   if (error) throw new Error(error.message);
+  refreshTablesNow('round_state', 'judge_team_selections');
 }
 
 export function startRoundSelection(): Promise<void> {
@@ -983,6 +1038,7 @@ export async function archiveCurrentEventResults(params: {
     score_max: 25,
   });
   if (error) throw error;
+  refreshTablesNow('teams');
   return id;
 }
 
