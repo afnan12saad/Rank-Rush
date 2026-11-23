@@ -150,6 +150,7 @@ export type RoundStatus = 'idle' | 'selecting' | 'live';
 export type RoundPhase = 'idle' | 'selecting' | 'presenting' | 'rating' | 'closed';
 
 export interface RoundState {
+  roundName?: string;
   roundNumber: number;
   status: RoundStatus;
   presentSeconds: number;
