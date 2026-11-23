@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { SiteHeader } from '../components/SiteHeader';
 import { SiteFooter } from '../components/SiteFooter';
-import { LiveTimerDisplay } from '../components/LiveTimerDisplay';
 import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { useArenaAuth } from '../context/ArenaAuthContext';
 import {
@@ -155,7 +154,11 @@ export function JudgeDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <LiveTimerDisplay settings={settings} variant="compact" />
+            <RoundTimerBanner
+              round={round}
+              serverOffsetMs={serverOffsetMs}
+              variant="compact"
+            />
             <button
               type="button"
               onClick={() => void logoutAll()}
