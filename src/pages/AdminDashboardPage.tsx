@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -16,7 +16,9 @@ import { AdminJudgesPanel } from '../components/admin/AdminJudgesPanel';
 import { AdminControlsPanel } from '../components/admin/AdminControlsPanel';
 import { AdminQrPanel } from '../components/admin/AdminQrPanel';
 import { AdminArchivesPanel } from '../components/admin/AdminArchivesPanel';
-import { AdminResultsPanel } from '../components/admin/AdminResultsPanel';
+const AdminResultsPanel = lazy(() =>
+  import('../components/admin/AdminResultsPanel').then((m) => ({ default: m.AdminResultsPanel })),
+);
 import { AdminSettingsPanel } from '../components/admin/AdminSettingsPanel';
 import { parseAdminTab, type AdminTab } from '../components/admin/adminNav';
 import { useArenaAuth } from '../context/ArenaAuthContext';
@@ -500,6 +502,7 @@ export function AdminDashboardPage() {
             )}
 
             {activeTab === 'results' && (
+              <Suspense fallback={<div className="p-6 text-sm text-slate-400">Loading results...</div>}>
               <AdminResultsPanel
                 leaderboard={leaderboard}
                 teams={teams}
@@ -510,6 +513,7 @@ export function AdminDashboardPage() {
                 totalPossible={metrics.totalPossible}
                 onNotify={showToast}
               />
+              </Suspense>
             )}
 
             {activeTab === 'archives' && <AdminArchivesPanel />}
