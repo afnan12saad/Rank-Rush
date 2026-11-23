@@ -155,11 +155,8 @@ export function ProjectorPage() {
       </header>
 
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 lg:px-10 py-8 space-y-8">
-        {/* Centered Round Countdown Header Card */}
-        <section
-          aria-label="Round Countdown Timer"
-          className="flex flex-col items-center justify-center gap-4 py-1"
-        >
+        {/* Round countdown floats bottom-right so the leaderboard stays visible */}
+        <section aria-label="Round Countdown Timer" className="contents">
           <RoundTimerBanner
             round={round}
             serverOffsetMs={serverOffsetMs}
