@@ -10,7 +10,6 @@ import {
   Radio,
 } from 'lucide-react';
 import { BrandMark } from '../components/BrandMark';
-import { LiveTimerDisplay } from '../components/LiveTimerDisplay';
 import { PodiumShowcase } from '../components/PodiumShowcase';
 import { RoundTimerBanner } from '../components/RoundTimerBanner';
 import { useArenaAuth } from '../context/ArenaAuthContext';
@@ -156,16 +155,11 @@ export function ProjectorPage() {
       </header>
 
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 lg:px-10 py-8 space-y-8">
-        {/* Centered Whole-Event Countdown Header Card */}
+        {/* Centered Round Countdown Header Card */}
         <section
-          aria-label="Whole Event Countdown Timer"
+          aria-label="Round Countdown Timer"
           className="flex flex-col items-center justify-center gap-4 py-1"
         >
-          <LiveTimerDisplay
-            settings={settings}
-            variant="split"
-            eventName={eventName}
-          />
           <RoundTimerBanner
             round={round}
             serverOffsetMs={serverOffsetMs}
@@ -245,4 +239,4 @@ export function ProjectorPage() {
       </main>
     </div>
   );
-            }
+}
